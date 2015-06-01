@@ -1,0 +1,5 @@
+gom 'github.com/op/go-logging',             :commit => 'e8d5414f0947014548c2334044a0fac13187dfee'
+
+group :test do
+  gom 'github.com/stretchr/testify/assert', :commit => '4e2053a4afff974eda45ff92a9198f0273cdfdc7'
+end
