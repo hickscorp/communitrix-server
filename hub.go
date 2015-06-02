@@ -39,7 +39,7 @@ func (hub *Hub) HandleClient(conn net.Conn) {
 	// Store the client information for this connection.
 	client := hub.NewClient(conn)
 	// Send our welcome message.
-	client.Send <- tx.Wrap(tx.Welcome{"Hi there!"})
+	client.Send <- tx.Wrap(tx.Welcome{Message: "Hi there!"})
 	// Start the writing loop thread, then start reading from the connection.
 	go client.WriteLoop()
 	client.ReadLoop(hub.commandQueue)
@@ -72,7 +72,7 @@ func (hub *Hub) Run() {
 				combats := make([]string, 0)
 				if len(hub.combats) == 0 {
 					log.Warning("This server has no combats, creating a default one.")
-					combat := hub.RunNewCombat(2, 2)
+					combat := hub.RunNewCombat(2, 4)
 					hub.combats[combat.UUID] = combat
 				}
 				for uuid, _ := range hub.combats {
@@ -98,16 +98,6 @@ func (hub *Hub) Run() {
 				} else {
 					client.JoinCombat(combat)
 				}
-			// Client wants to play his turn in combat.
-			case rx.CombatPlayTurn:
-				if client.Combat == nil {
-					log.Warning("Client %s tried to play a turn in a combat he is not participating to.")
-					client.Send <- tx.Wrap(tx.Error{
-						Code:   422,
-						Reason: "You cannot send turns to combats you're not participating to.",
-					})
-				}
-
 			// How is that even possible?
 			default:
 				log.Warning("Client %s sent an unhandled command type: %s.", client.UUID, reflect.TypeOf(sub))

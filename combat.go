@@ -55,9 +55,7 @@ func (combat *Combat) Run() {
 				client := sub.Client.(*Client)
 				if _, ok := combat.clients[client]; !ok {
 					// Notify all other clients.
-					notification := tx.Wrap(tx.CombatPlayerJoined{
-						Player: client.UUID,
-					})
+					notification := tx.Wrap(tx.CombatPlayerJoined{Player: client.UUID})
 					for otherClient, _ := range combat.clients {
 						otherClient.Send <- notification
 					}

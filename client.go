@@ -41,14 +41,14 @@ func (cli *Client) IsInCombat() bool {
 func (cli *Client) JoinCombat(combat *Combat) {
 	cli.Mutex.Lock()
 	defer cli.Mutex.Unlock()
-	combat.CommandQueue <- cbt.Wrap(cbt.AddClient{cli})
+	combat.CommandQueue <- cbt.Wrap(cbt.AddClient{Client: cli})
 	cli.Combat = combat
 }
 func (cli *Client) LeaveCombat() bool {
 	cli.Mutex.Lock()
 	defer cli.Mutex.Unlock()
 	if cli.Combat != nil {
-		cli.Combat.CommandQueue <- cbt.Wrap(cbt.RemoveClient{cli})
+		cli.Combat.CommandQueue <- cbt.Wrap(cbt.RemoveClient{Client: cli})
 		return true
 	}
 	return false
@@ -76,14 +76,24 @@ func (cli *Client) CommandFromPacket(line []byte) *rx.Base {
 
 	typ := rec["type"].(string)
 	switch typ {
-	case "Error":
-		return rx.Wrap(cli, rx.Error{rec["code"].(int), rec["reason"].(string)})
+	// Those commands need to pass through the hub.
 	case "Register":
-		return rx.Wrap(cli, rx.Register{rec["username"].(string)})
+		return rx.Wrap(cli, rx.Register{Username: rec["username"].(string)})
 	case "CombatList":
 		return rx.Wrap(cli, rx.CombatList{})
 	case "CombatJoin":
-		return rx.Wrap(cli, rx.CombatJoin{rec["uuid"].(string)})
+		return rx.Wrap(cli, rx.CombatJoin{UUID: rec["uuid"].(string)})
+
+	// User wants to play his turn.
+	case "CombatPlayTurn":
+		if !cli.IsInCombat() {
+			log.Warning("Client %s tried to play a turn in a combat he is not participating to.")
+			cli.Send <- tx.Wrap(tx.Error{
+				Code:   422,
+				Reason: "You cannot send turns to combats you're not participating to.",
+			})
+		}
+		// TODO: Play turn.
 	case "CombatLeave":
 		if !cli.LeaveCombat() {
 			log.Warning("Client %s requested to leave combat, but he is not in one.", cli.UUID)
@@ -92,11 +102,13 @@ func (cli *Client) CommandFromPacket(line []byte) *rx.Base {
 				Reason: "You cannot leave a combat while not participating one.",
 			})
 		}
-	case "CombatPlayTurn":
-		return rx.Wrap(cli, rx.CombatPlayTurn{})
+
 	default:
-		// We need to send an error to the client whenever we reach cli point.
-		log.Warning("[parser] Client %s has sent a packet containing an invalid code: %s.", cli.UUID, rec)
+		log.Warning("Client %s sent an unhandled command type: %s.", cli.UUID, rec)
+		cli.Send <- tx.Wrap(tx.Error{
+			Code:   422,
+			Reason: "The command you sent could not be understood by the server.",
+		})
 	}
 	return nil
 }

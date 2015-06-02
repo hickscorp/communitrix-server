@@ -11,10 +11,6 @@ type Base struct {
 	Client  interface{} // Pointer to a Client.
 	Command interface{} // Command.
 }
-type Error struct {
-	Code   int
-	Reason string
-}
 type Register struct {
 	Username string
 }
