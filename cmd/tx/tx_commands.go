@@ -20,6 +20,9 @@ type Error struct {
 type Welcome struct {
 	Message string `json:"message"`
 }
+type Registered struct {
+	Username string `json:"username"`
+}
 
 type CombatList struct {
 	Combats *[]string `json:"combats"`

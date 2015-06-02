@@ -1,7 +1,6 @@
 package main
 
 import (
-	"communitrix/cmd/cbt"
 	"communitrix/cmd/rx"
 	"communitrix/cmd/tx"
 	"net"
@@ -39,7 +38,8 @@ func (hub *Hub) HandleClient(conn net.Conn) {
 	defer conn.Close()
 	// Store the client information for this connection.
 	client := hub.NewClient(conn)
-	hub.commandQueue <- *rx.Wrap(client, rx.Register{})
+	// Send our welcome message.
+	client.Send <- tx.Wrap(tx.Welcome{"Hi there!"})
 	// Start the writing loop thread, then start reading from the connection.
 	go client.WriteLoop()
 	client.ReadLoop(hub.commandQueue)
@@ -56,20 +56,16 @@ func (hub *Hub) Run() {
 			switch sub := command.Command.(type) {
 			// Register a new client.
 			case rx.Register:
-				log.Info("Client %s connected, welcoming him...", client.UUID)
-				client.Send <- tx.Wrap(tx.Welcome{"Hi there!"})
-				break
+				log.Info("Client %s registering as %s.", client.UUID, sub.Username)
+				client.Username = sub.Username
+				client.Send <- tx.Wrap(tx.Registered{sub.Username})
 
 			// Unregisters a client.
 			case rx.Unregister:
 				log.Info("Client disconnected %s.", client.UUID)
 				// Client was in a combat, remove him.
-				if combat := client.Combat; combat != nil {
-					combat.CommandQueue <- cbt.RemoveClient{client}
-					client.Combat = nil
-				}
+				client.LeaveCombat()
 				client.Conn.Close()
-				break
 
 			// Client wants a list of existing combats.
 			case rx.CombatList:
@@ -85,7 +81,6 @@ func (hub *Hub) Run() {
 				client.Send <- tx.Wrap(tx.CombatList{
 					Combats: &combats,
 				})
-
 			// Client wants to create a combat.
 			case rx.CombatCreate:
 				combat := hub.RunNewCombat(sub.MinPlayers, sub.MaxPlayers)
@@ -100,25 +95,9 @@ func (hub *Hub) Run() {
 						Code:   404,
 						Reason: "Combat was not found.",
 					})
-					return
+				} else {
+					client.JoinCombat(combat)
 				}
-				if combat != nil {
-					combat.CommandQueue <- cbt.AddClient{client}
-					client.Combat = combat
-				}
-			// Client wants to leave a combat.
-			case rx.CombatLeave:
-				combat := client.Combat
-				if combat == nil {
-					log.Warning("Client %s requested to leave combat, but he is not in one.", client.UUID)
-					client.Send <- tx.Wrap(tx.Error{
-						Code:   422,
-						Reason: "You cannot leave a combat while not participating one.",
-					})
-					return
-				}
-				combat.CommandQueue <- cbt.RemoveClient{client}
-				client.Combat = nil
 			// Client wants to play his turn in combat.
 			case rx.CombatPlayTurn:
 				if client.Combat == nil {
@@ -127,7 +106,6 @@ func (hub *Hub) Run() {
 						Code:   422,
 						Reason: "You cannot send turns to combats you're not participating to.",
 					})
-					return
 				}
 
 			// How is that even possible?

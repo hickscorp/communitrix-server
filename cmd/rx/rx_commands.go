@@ -15,7 +15,9 @@ type Error struct {
 	Code   int
 	Reason string
 }
-type Register struct{}
+type Register struct {
+	Username string
+}
 type Unregister struct{}
 
 type CombatList struct{}

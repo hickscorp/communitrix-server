@@ -19,12 +19,12 @@ func NextCombatUUID() int64 {
 
 // Client is the base struct representing connected entities.
 type Combat struct {
-	UUID         string           `json:"uuid"`       // The combat unique identifier on the server.
-	Started      bool             `json:"started"`    // Wether this combat has started or not.
-	MinPlayers   int              `json:"minPlayers"` // The minimum number of players that can join.
-	MaxPlayers   int              `json:"maxPlayers"` // The maximum number of players that can join.
-	clients      map[*Client]bool ``                  // Maintains a list of known clients.
-	CommandQueue chan interface{} ``                  // The Combat command queue.
+	UUID         string           // The combat unique identifier on the server.
+	Started      bool             // Wether this combat has started or not.
+	MinPlayers   int              // The minimum number of players that can join.
+	MaxPlayers   int              // The maximum number of players that can join.
+	clients      map[*Client]bool // Maintains a list of known clients.
+	CommandQueue chan *cbt.Base   // The Combat command queue.
 }
 
 // NewClient is exposed on the Hub class.
@@ -35,7 +35,7 @@ func (hub *Hub) RunNewCombat(minPlayers int, maxPlayers int) *Combat {
 		MinPlayers:   minPlayers,
 		MaxPlayers:   maxPlayers,
 		clients:      make(map[*Client]bool),
-		CommandQueue: make(chan interface{}, *config.HubCommandBufferSize),
+		CommandQueue: make(chan *cbt.Base, *config.HubCommandBufferSize),
 	}
 	go ret.Run()
 	return ret
@@ -47,8 +47,8 @@ func (combat *Combat) Run() {
 	for {
 		// Wait for any event to occur.
 		select {
-		case iCommand := <-combat.CommandQueue:
-			switch sub := (iCommand).(type) {
+		case cmd := <-combat.CommandQueue:
+			switch sub := cmd.Command.(type) {
 
 			// Register a new client.
 			case cbt.AddClient:

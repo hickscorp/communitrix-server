@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"communitrix/cmd/cbt"
 	"communitrix/cmd/rx"
 	"communitrix/cmd/tx"
 	"encoding/json"
@@ -24,15 +25,39 @@ func NextClientUUID() int64 {
 
 // Client is the base struct representing connected entities.
 type Client struct {
-	UUID   string       // The client unique identifier on the server.
-	Conn   net.Conn     // The client connection socket itself.
-	Send   chan tx.Base // Outbound messages are in a buffered channel.
-	Combat *Combat      // The combat the player is currently in.
+	Mutex    sync.Mutex   // The lock for this client.
+	UUID     string       // The client unique identifier on the server.
+	Username string       // The username the client has picked.
+	Conn     net.Conn     // The client connection socket itself.
+	Send     chan tx.Base // Outbound messages are in a buffered channel.
+	Combat   *Combat      // The combat the player is currently in.
+}
+
+func (cli *Client) IsInCombat() bool {
+	cli.Mutex.Lock()
+	defer cli.Mutex.Unlock()
+	return cli.Combat != nil
+}
+func (cli *Client) JoinCombat(combat *Combat) {
+	cli.Mutex.Lock()
+	defer cli.Mutex.Unlock()
+	combat.CommandQueue <- cbt.Wrap(cbt.AddClient{cli})
+	cli.Combat = combat
+}
+func (cli *Client) LeaveCombat() bool {
+	cli.Mutex.Lock()
+	defer cli.Mutex.Unlock()
+	if cli.Combat != nil {
+		cli.Combat.CommandQueue <- cbt.Wrap(cbt.RemoveClient{cli})
+		return true
+	}
+	return false
 }
 
 // NewClient is exposed on the Hub class.
 func (hub *Hub) NewClient(conn net.Conn) *Client {
 	return &Client{
+		Mutex:  sync.Mutex{},
 		UUID:   fmt.Sprintf("CLI%d", NextClientUUID()),
 		Conn:   conn,
 		Send:   make(chan tx.Base, *config.ClientSendBufferSize),
@@ -53,18 +78,27 @@ func (cli *Client) CommandFromPacket(line []byte) *rx.Base {
 	switch typ {
 	case "Error":
 		return rx.Wrap(cli, rx.Error{rec["code"].(int), rec["reason"].(string)})
+	case "Register":
+		return rx.Wrap(cli, rx.Register{rec["username"].(string)})
 	case "CombatList":
 		return rx.Wrap(cli, rx.CombatList{})
 	case "CombatJoin":
 		return rx.Wrap(cli, rx.CombatJoin{rec["uuid"].(string)})
+	case "CombatLeave":
+		if !cli.LeaveCombat() {
+			log.Warning("Client %s requested to leave combat, but he is not in one.", cli.UUID)
+			cli.Send <- tx.Wrap(tx.Error{
+				Code:   422,
+				Reason: "You cannot leave a combat while not participating one.",
+			})
+		}
 	case "CombatPlayTurn":
 		return rx.Wrap(cli, rx.CombatPlayTurn{})
 	default:
 		// We need to send an error to the client whenever we reach cli point.
 		log.Warning("[parser] Client %s has sent a packet containing an invalid code: %s.", cli.UUID, rec)
-		// cli.SendIncorrectFieldResult(tag, "code", "valid string command")
-		return nil
 	}
+	return nil
 }
 
 // ReadLoop pumps messages from the client to the hub.
