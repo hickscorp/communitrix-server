@@ -7,9 +7,9 @@ import (
 	"reflect"
 )
 
-// Hub structure handles interractions between clients.
+// Hub structure handles interractions between players.
 type Hub struct {
-	clients      map[string]*Client // Maintains a list of known clients.
+	players      map[string]*Player // Maintains a list of known players.
 	combats      map[string]*Combat // All existing combats.
 	commandQueue chan rx.Base       // Registration, unregistration, subscription, unsubscription, broadcasting.
 }
@@ -17,7 +17,7 @@ type Hub struct {
 // NewHub is the Hub default constructor.
 func NewHub() *Hub {
 	hub := &Hub{
-		clients:      make(map[string]*Client),
+		players:      make(map[string]*Player),
 		combats:      make(map[string]*Combat),
 		commandQueue: make(chan rx.Base, *config.HubCommandBufferSize),
 	}
@@ -36,13 +36,13 @@ func RunNewHub() *Hub {
 func (hub *Hub) HandleClient(conn net.Conn) {
 	// Whenever this method exits, close the connection.
 	defer conn.Close()
-	// Store the client information for this connection.
-	client := hub.NewClient(conn)
+	// Store the player information for this connection.
+	player := hub.NewPlayer(conn)
 	// Send our welcome message.
-	client.Send <- tx.Wrap(tx.Welcome{Message: "Hi there!"})
+	player.Send <- tx.Wrap(tx.Welcome{Message: "Hi there!"})
 	// Start the writing loop thread, then start reading from the connection.
-	go client.WriteLoop()
-	client.ReadLoop(hub.commandQueue)
+	go player.WriteLoop()
+	player.ReadLoop(hub.commandQueue)
 }
 
 // Run is the main loop for any Hub object.
@@ -52,22 +52,22 @@ func (hub *Hub) Run() {
 		// Wait for any event to occur.
 		select {
 		case command := <-hub.commandQueue:
-			client := command.Client.(*Client)
+			player := command.Player.(*Player)
 			switch sub := command.Command.(type) {
-			// Register a new client.
+			// Register a new player.
 			case rx.Register:
-				log.Info("Client %s registering as %s.", client.UUID, sub.Username)
-				client.Username = sub.Username
-				client.Send <- tx.Wrap(tx.Registered{sub.Username})
+				log.Info("Player %s registering as %s.", player.UUID, sub.Username)
+				player.Username = sub.Username
+				player.Send <- tx.Wrap(tx.Registered{sub.Username})
 
-			// Unregisters a client.
+			// Unregisters a player.
 			case rx.Unregister:
-				log.Info("Client disconnected %s.", client.UUID)
-				// Client was in a combat, remove him.
-				client.LeaveCombat()
-				client.Conn.Close()
+				log.Info("Player disconnected %s.", player.UUID)
+				// Player was in a combat, remove him.
+				player.LeaveCombat()
+				player.Conn.Close()
 
-			// Client wants a list of existing combats.
+			// Player wants a list of existing combats.
 			case rx.CombatList:
 				combats := make([]string, 0)
 				if len(hub.combats) == 0 {
@@ -78,30 +78,30 @@ func (hub *Hub) Run() {
 				for uuid, _ := range hub.combats {
 					combats = append(combats, uuid)
 				}
-				client.Send <- tx.Wrap(tx.CombatList{
+				player.Send <- tx.Wrap(tx.CombatList{
 					Combats: &combats,
 				})
-			// Client wants to create a combat.
+			// Player wants to create a combat.
 			case rx.CombatCreate:
 				combat := hub.RunNewCombat(sub.MinPlayers, sub.MaxPlayers)
 				hub.combats[combat.UUID] = combat
-				hub.commandQueue <- *rx.Wrap(client, rx.CombatJoin{UUID: combat.UUID})
-			// Client wants to join a combat.
+				hub.commandQueue <- *rx.Wrap(player, rx.CombatJoin{UUID: combat.UUID})
+			// Player wants to join a combat.
 			case rx.CombatJoin:
 				combat := hub.combats[sub.UUID]
 				if combat == nil {
-					log.Warning("The combat %s requested by client %s doesn't exist.", sub.UUID, client.UUID)
-					client.Send <- tx.Wrap(tx.Error{
+					log.Warning("The combat %s requested by player %s doesn't exist.", sub.UUID, player.UUID)
+					player.Send <- tx.Wrap(tx.Error{
 						Code:   404,
 						Reason: "Combat was not found.",
 					})
 				} else {
-					client.JoinCombat(combat)
+					player.JoinCombat(combat)
 				}
 			// How is that even possible?
 			default:
-				log.Warning("Client %s sent an unhandled command type: %s.", client.UUID, reflect.TypeOf(sub))
-				client.Send <- tx.Wrap(tx.Error{
+				log.Warning("Player %s sent an unhandled command type: %s.", player.UUID, reflect.TypeOf(sub))
+				player.Send <- tx.Wrap(tx.Error{
 					Code:   422,
 					Reason: "The command you sent could not be understood by the server.",
 				})

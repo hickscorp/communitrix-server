@@ -1,14 +1,14 @@
 package rx
 
-func Wrap(client interface{}, sub interface{}) *Base {
+func Wrap(player interface{}, sub interface{}) *Base {
 	return &Base{
-		Client:  client,
+		Player:  player,
 		Command: sub,
 	}
 }
 
 type Base struct {
-	Client  interface{} // Pointer to a Client.
+	Player  interface{} // Pointer to a Player.
 	Command interface{} // Command.
 }
 type Register struct {

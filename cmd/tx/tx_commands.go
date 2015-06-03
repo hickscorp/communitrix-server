@@ -28,16 +28,13 @@ type CombatList struct {
 	Combats *[]string `json:"combats"`
 }
 type CombatJoin struct {
-	UUID       string    `json:"uuid"`       // The combat unique identifier on the server.
-	MinPlayers int       `json:"minPlayers"` // The minimum number of players that can join.
-	MaxPlayers int       `json:"maxPlayers"` // The maximum number of players that can join.
-	Players    *[]string `json:"players"`
+	Combat interface{} `json:"combat"` // The combat details.
 }
 type CombatPlayerJoined struct {
-	Player string `json:"player"`
+	Player interface{} `json:"player"`
 }
 type CombatPlayerLeft struct {
-	Player string `json:"player"`
+	UUID string `json:"uuid"`
 }
 type CombatStart struct {
 	UUID    string    `json:"uuid"`    // The combat unique identifier on the server.
