@@ -5,6 +5,7 @@ import (
 	"communitrix/cmd/cbt"
 	"communitrix/cmd/rx"
 	"communitrix/cmd/tx"
+	"communitrix/logic"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -95,14 +96,21 @@ func (cli *Player) CommandFromPacket(line []byte) *rx.Base {
 
 	// User wants to play his turn.
 	case "CombatPlayTurn":
-		if !cli.IsInCombat() {
-			log.Warning("Player %s tried to play a turn in a combat he is not participating to.")
-			cli.Send <- tx.Wrap(tx.Error{
-				Code:   422,
-				Reason: "You cannot send turns to combats you're not participating to.",
-			})
+		// return rx.Wrap(cli, rx.CombatPlayTurn{
+		// 	UUID:        rec["uuid"].(string),
+		// 	Rotation:    logic.NewQuaternionFromMap(rec["rotation"]),
+		// 	Translation: logic.NewVectorFromMap(rec["translation"]),
+		// })
+
+		piece := logic.NewSamplePiece()
+		quat := logic.NewQuaternionFromMap(rec["rotation"])
+		log.Error("Quat is %f %f %f %f", quat.X, quat.Y, quat.Z, quat.W)
+		for _, v := range *piece {
+			v.MultiplyByQuaternion(quat)
 		}
-		// TODO: Play turn.
+		cli.Send <- tx.Wrap(tx.CombatPlayerTurn{PlayerUUID: cli.UUID, Contents: piece})
+		return nil
+
 	case "CombatLeave":
 		if !cli.LeaveCombat() {
 			log.Warning("Player %s requested to leave combat, but he is not in one.", cli.UUID)
@@ -139,7 +147,8 @@ func (cli *Player) ReadLoop(cq chan rx.Base) {
 		if err != nil {
 			break
 		}
-		if cmd := cli.CommandFromPacket(line); cmd != nil {
+		cmd := cli.CommandFromPacket(line)
+		if cmd != nil {
 			cq <- *cmd
 		}
 	}
@@ -151,7 +160,8 @@ func (cli *Player) WriteLoop() {
 	// Whenever this method returns, stop the ping timer for this connection and close the it.
 	defer func() {
 		ticker.Stop()
-		cli.Conn.Close()
+		log.Error("Was closed from there.")
+		// cli.Conn.Close()
 	}()
 
 	// Loop until data is ready to be sent.

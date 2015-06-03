@@ -11,6 +11,7 @@ type Base struct {
 	Player  interface{} // Pointer to a Player.
 	Command interface{} // Command.
 }
+
 type Register struct {
 	Username string
 }
@@ -25,4 +26,8 @@ type CombatJoin struct {
 	UUID string
 }
 type CombatLeave struct{}
-type CombatPlayTurn struct{}
+type CombatPlayTurn struct {
+	UUID        string      // The piece ID.
+	Rotation    interface{} // The Quaternion representing the rotation.
+	Translation interface{} // The Vector representing the rotation.
+}

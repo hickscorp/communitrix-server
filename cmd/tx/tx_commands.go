@@ -42,7 +42,7 @@ type CombatStart struct {
 }
 type CombatNewTurn struct{}
 type CombatPlayerTurn struct {
-	UUID   string `json:"uuid"`
-	Player string `json:"player"`
+	PlayerUUID string      `json:"playerUUID"`
+	Contents   interface{} `json:"contents"`
 }
 type CombatEnd struct{}

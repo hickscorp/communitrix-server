@@ -53,6 +53,7 @@ func (hub *Hub) Run() {
 		select {
 		case command := <-hub.commandQueue:
 			player := command.Player.(*Player)
+
 			switch sub := command.Command.(type) {
 			// Register a new player.
 			case rx.Register:
@@ -72,7 +73,7 @@ func (hub *Hub) Run() {
 				combats := make([]string, 0)
 				if len(hub.combats) == 0 {
 					log.Warning("This server has no combats, creating a default one.")
-					combat := hub.RunNewCombat(2, 4)
+					combat := hub.RunNewCombat(2, 6)
 					hub.combats[combat.UUID] = combat
 				}
 				for uuid, _ := range hub.combats {

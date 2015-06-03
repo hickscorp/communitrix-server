@@ -6,7 +6,6 @@ import (
 	"github.com/op/go-logging"
 	"net"
 	"os"
-	"time"
 )
 
 var config = Config{}
@@ -23,9 +22,6 @@ func main() {
 	config.Port = flag.Int("port", 8080, "Port to serve on.")
 	config.HubCommandBufferSize = flag.Int("hubCommandBuffer", 4096, "Size of the hub command queue buffer.")
 	config.ClientSendBufferSize = flag.Int("clientSendBufferSize", 64, "Size of the client send queue buffer.")
-	config.MaximumMessageSize = flag.Int64("maximumMessageSize", 32768, "Maximum message size allowed, expressed in bytes.")
-	config.PongTimeout = flag.Duration("pongTimeout", 10*time.Second, "Maximum muted time allowed for a client, expressed in seconds.")
-	config.AutosaveInterval = flag.Duration("autosaveInterval", 15*time.Minute, "Interval for auto-saving channels data.")
 	logLevel := flag.String("logLevel", "WARNING", "Log level [DEBUG|INFO|WARNING|ERROR|CRITICAL].")
 	flag.Parse()
 
@@ -37,22 +33,20 @@ func main() {
 	// Listen for incoming connections.
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		fmt.Println("Error listening: ", err.Error())
+		log.Error("Error listening: %s", err.Error())
 		os.Exit(1)
 	}
 	// Close the listener when the application closes.
 	defer listener.Close()
-	// cmd := WrapCommand(NCmdWelcome{Message: "Hi there!"})
 
 	// Create and run our hub.
 	hub := RunNewHub()
-
-	fmt.Println("Listening on " + addr)
+	log.Info("Listening on %s", addr)
 	for {
 		// Listen for an incoming connection.
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Error accepting: ", err.Error())
+			log.Error("Error accepting new client: %s", err.Error())
 			os.Exit(1)
 		}
 		// Handle connections in a new goroutine.
