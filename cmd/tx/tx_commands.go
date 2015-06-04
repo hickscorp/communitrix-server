@@ -1,6 +1,7 @@
 package tx
 
 import (
+	"communitrix/util"
 	"reflect"
 )
 
@@ -31,7 +32,7 @@ type CombatJoin struct {
 	Combat interface{} `json:"combat"` // The combat details.
 }
 type CombatPlayerJoined struct {
-	Player interface{} `json:"player"`
+	Player *util.JsonMap `json:"player"`
 }
 type CombatPlayerLeft struct {
 	UUID string `json:"uuid"`

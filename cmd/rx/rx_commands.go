@@ -1,6 +1,8 @@
 package rx
 
-func Wrap(player interface{}, sub interface{}) *Base {
+import "communitrix/i"
+
+func Wrap(player i.Player, sub interface{}) *Base {
 	return &Base{
 		Player:  player,
 		Command: sub,
@@ -8,7 +10,7 @@ func Wrap(player interface{}, sub interface{}) *Base {
 }
 
 type Base struct {
-	Player  interface{} // Pointer to a Player.
+	Player  i.Player    // Pointer to a Player.
 	Command interface{} // Command.
 }
 

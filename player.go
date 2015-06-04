@@ -5,7 +5,9 @@ import (
 	"communitrix/cmd/cbt"
 	"communitrix/cmd/rx"
 	"communitrix/cmd/tx"
-	"communitrix/logic"
+	"communitrix/i"
+	"communitrix/math"
+	"communitrix/util"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -26,103 +28,119 @@ func NextPlayerUUID() int64 {
 
 // Player is the base struct representing connected entities.
 type Player struct {
-	Mutex    sync.Mutex   // The lock for this player.
-	UUID     string       // The player unique identifier on the server.
-	Username string       // The username the player has picked.
-	Level    int          // This player's level.
-	Conn     net.Conn     // The player connection socket itself.
-	Send     chan tx.Base // Outbound messages are in a buffered channel.
-	Combat   *Combat      // The combat the player is currently in.
+	mutex        sync.Mutex       // The lock for this player.
+	uuid         string           // The player unique identifier on the server.
+	username     string           // The username the player has picked.
+	level        int              // This player's level.
+	connection   net.Conn         // The player connection socket itself.
+	commandQueue chan interface{} // Outbound messages are in a buffered channel.
+	combat       i.Combat         // The combat the player is currently in.
 }
 
-func (player *Player) AsSendable() *map[string]interface{} {
-	return &map[string]interface{}{
-		"uuid":     player.UUID,
-		"username": player.Username,
-		"level":    player.Level,
-	}
-}
-
-func (cli *Player) IsInCombat() bool {
-	cli.Mutex.Lock()
-	defer cli.Mutex.Unlock()
-	return cli.Combat != nil
-}
-func (cli *Player) JoinCombat(combat *Combat) {
-	cli.Mutex.Lock()
-	defer cli.Mutex.Unlock()
-	combat.CommandQueue <- cbt.Wrap(cbt.AddPlayer{Player: cli})
-	cli.Combat = combat
-}
-func (cli *Player) LeaveCombat() bool {
-	cli.Mutex.Lock()
-	defer cli.Mutex.Unlock()
-	if cli.Combat != nil {
-		cli.Combat.CommandQueue <- cbt.Wrap(cbt.RemovePlayer{Player: cli})
-		return true
-	}
-	return false
-}
+func (player *Player) UUID() string                   { return player.uuid }
+func (player *Player) Username() string               { return player.username }
+func (player *Player) SetUsername(username string)    { player.username = username }
+func (player *Player) Level() int                     { return player.level }
+func (player *Player) Connection() net.Conn           { return player.connection }
+func (player *Player) Combat() i.Combat               { return player.combat }
+func (player *Player) CommandQueue() chan interface{} { return player.commandQueue }
 
 // NewPlayer is exposed on the Hub class.
-func (hub *Hub) NewPlayer(conn net.Conn) *Player {
+func NewPlayer(connection net.Conn) *Player {
 	return &Player{
-		Mutex:  sync.Mutex{},
-		UUID:   fmt.Sprintf("CLI%d", NextPlayerUUID()),
-		Conn:   conn,
-		Send:   make(chan tx.Base, *config.ClientSendBufferSize),
-		Combat: nil,
+		mutex:        sync.Mutex{},
+		uuid:         fmt.Sprintf("CLI%d", NextPlayerUUID()),
+		connection:   connection,
+		commandQueue: make(chan interface{}, *config.ClientSendBufferSize),
+		combat:       nil,
+	}
+}
+
+func (player *Player) AsSendable() *util.JsonMap {
+	return &util.JsonMap{
+		"uuid":     player.uuid,
+		"username": player.username,
+		"level":    player.level,
+	}
+}
+
+func (player *Player) WhileLocked(do func()) {
+	player.mutex.Lock()
+	do()
+	player.mutex.Unlock()
+}
+func (player *Player) IsInCombat() bool {
+	var ret bool
+	player.WhileLocked(func() {
+		ret = player.Combat != nil
+	})
+	return ret
+}
+func (player *Player) JoinCombat(combat i.Combat) {
+	combat.CommandQueue() <- cbt.Wrap(cbt.AddPlayer{Player: player})
+	player.WhileLocked(func() {
+		player.combat = combat
+	})
+}
+func (player *Player) LeaveCombat() bool {
+	if ret := player.IsInCombat(); ret {
+		player.combat.CommandQueue() <- cbt.Wrap(cbt.RemovePlayer{Player: player})
+		return true
+	} else {
+		return false
 	}
 }
 
 // CommandFromPacket processes a JSON-formated payload and attempts to transform it into a hub command.
-func (cli *Player) CommandFromPacket(line []byte) *rx.Base {
-	// Deserialize the line to a map[string]interface{}.
-	var rec map[string]interface{}
+func (player *Player) CommandFromPacket(line []byte) *rx.Base {
+	// Deserialize the line to a util.JsonMap.
+	var rec util.JsonMap
 	if err := json.Unmarshal(line, &rec); err != nil {
-		log.Warning("[comms] Player %s has sent a packet we are unable to unmarshall: %s - %s.", cli.UUID, err, line)
+		log.Warning("[comms] Player %s has sent a packet we are unable to unmarshall: %s - %s.", player.uuid, err, line)
 		return nil
 	}
 
-	typ := rec["type"].(string)
+	typ := rec.String("type")
 	switch typ {
 	// Those commands need to pass through the hub.
 	case "Register":
-		return rx.Wrap(cli, rx.Register{Username: rec["username"].(string)})
+		return rx.Wrap(player, rx.Register{Username: rec.String("username")})
 	case "CombatList":
-		return rx.Wrap(cli, rx.CombatList{})
+		return rx.Wrap(player, rx.CombatList{})
 	case "CombatJoin":
-		return rx.Wrap(cli, rx.CombatJoin{UUID: rec["uuid"].(string)})
+		return rx.Wrap(player, rx.CombatJoin{
+			UUID: rec.String("uuid"),
+		})
 
 	// User wants to play his turn.
 	case "CombatPlayTurn":
-		// return rx.Wrap(cli, rx.CombatPlayTurn{
-		// 	UUID:        rec["uuid"].(string),
-		// 	Rotation:    logic.NewQuaternionFromMap(rec["rotation"]),
-		// 	Translation: logic.NewVectorFromMap(rec["translation"]),
+		// return rx.Wrap(player, rx.CombatPlayTurn{
+		// 	UUID:        rec.String("uuid"),
+		// 	Rotation:    math.NewQuaternionFromMap(rec.Map("rotation")),
+		// 	Translation: math.NewVectorFromMap(rec.Map("translation")),
 		// })
 
-		piece := logic.NewSamplePiece()
-		quat := logic.NewQuaternionFromMap(rec["rotation"])
-		log.Error("Quat is %f %f %f %f", quat.X, quat.Y, quat.Z, quat.W)
-		for _, v := range *piece {
-			v.MultiplyByQuaternion(quat)
-		}
-		cli.Send <- tx.Wrap(tx.CombatPlayerTurn{PlayerUUID: cli.UUID, Contents: piece})
+		data := util.JsonMapFromInterface(rec["rotation"])
+		rot := math.NewQuaternionFromMap(data)
+		piece := math.NewSamplePiece().Rotate(rot)
+		player.commandQueue <- tx.Wrap(tx.CombatPlayerTurn{
+			PlayerUUID: player.uuid,
+			Contents:   piece,
+		})
 		return nil
 
 	case "CombatLeave":
-		if !cli.LeaveCombat() {
-			log.Warning("Player %s requested to leave combat, but he is not in one.", cli.UUID)
-			cli.Send <- tx.Wrap(tx.Error{
+		if !player.LeaveCombat() {
+			log.Warning("Player %s requested to leave combat, but he is not in one.", player.uuid)
+			player.commandQueue <- tx.Wrap(tx.Error{
 				Code:   422,
 				Reason: "You cannot leave a combat while not participating one.",
 			})
 		}
 
 	default:
-		log.Warning("Player %s sent an unhandled command type: %s.", cli.UUID, rec)
-		cli.Send <- tx.Wrap(tx.Error{
+		log.Warning("Player %s sent an unhandled command type: %s.", player.uuid, rec)
+		player.commandQueue <- tx.Wrap(tx.Error{
 			Code:   422,
 			Reason: "The command you sent could not be understood by the server.",
 		})
@@ -131,57 +149,61 @@ func (cli *Player) CommandFromPacket(line []byte) *rx.Base {
 }
 
 // ReadLoop pumps messages from the player to the hub.
-func (cli *Player) ReadLoop(cq chan rx.Base) {
+func (player *Player) ReadLoop(cq chan interface{}) {
 	// Whenever the read loop exits, unregister the player from the hub and close the connection.
 	defer func() {
-		log.Info("Player %s will be disconnected.", cli.UUID)
-		// Tell hub about the disconnect.
-		cq <- *rx.Wrap(cli, rx.Unregister{})
+		// Signal our write queue to exit.
+		player.commandQueue <- nil
+		// Signal our hub to stop handling this client.
+		cq <- *rx.Wrap(player, rx.Unregister{})
 	}()
-
+	// Prepare our json reader directly from the connection.
+	reader := bufio.NewReader(player.connection)
 	// Loop for every JSON packet received.
 	for {
-		// Try to read a JSON message from the connection, and check for failure.
-		reader := bufio.NewReader(cli.Conn)
 		line, _, err := reader.ReadLine()
 		if err != nil {
 			break
 		}
-		cmd := cli.CommandFromPacket(line)
-		if cmd != nil {
+		if cmd := player.CommandFromPacket(line); cmd != nil {
 			cq <- *cmd
 		}
 	}
 }
 
 // WriteLoop pumps messages from the hub to the player.
-func (cli *Player) WriteLoop() {
+func (player *Player) WriteLoop() {
 	ticker := time.NewTicker(time.Second * 1)
 	// Whenever this method returns, stop the ping timer for this connection and close the it.
-	defer func() {
-		ticker.Stop()
-		log.Error("Was closed from there.")
-		// cli.Conn.Close()
-	}()
+	defer ticker.Stop()
 
 	// Loop until data is ready to be sent.
-	json := json.NewEncoder(cli.Conn)
+	json := json.NewEncoder(player.connection)
 	for {
 		select {
 		// Data is ready to be sent on channel.
-		case message, ok := <-cli.Send:
+		case iCmd, ok := <-player.commandQueue:
 			// An error occured while retrieving the queued message.
 			if !ok {
 				return
 			}
-			if _, err := fmt.Fprintf(cli.Conn, "%s\r", message.Type); err != nil {
-				log.Warning("Failed to send next packet type to player %s: %s", cli.UUID, err)
+
+			// Based on the command type...
+			switch cmd := iCmd.(type) {
+			// This is the way for the hub to interript the write loop.
+			case nil:
 				return
-			}
-			// Try to send the message, and handle failure.
-			if _, err := fmt.Fprintf(cli.Conn, "%s\n", json.Encode(message.Command)); err != nil {
-				log.Warning("Failed to send packet to player %s: %s", cli.UUID, err)
-				return
+			// We got ourself a nice command!
+			case tx.Base:
+				if _, err := fmt.Fprintf(player.connection, "%s\r", cmd.Type); err != nil {
+					log.Warning("Failed to send next packet type to player %s: %s", player.uuid, err)
+					return
+				}
+				// Try to send the message, and handle failure.
+				if _, err := fmt.Fprintf(player.connection, "%s\n", json.Encode(cmd.Command)); err != nil {
+					log.Warning("Failed to send packet to player %s: %s", player.uuid, err)
+					return
+				}
 			}
 		case <-ticker.C:
 		}

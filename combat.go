@@ -3,6 +3,7 @@ package main
 import (
 	"communitrix/cmd/cbt"
 	"communitrix/cmd/tx"
+	"communitrix/util"
 	"fmt"
 	"sync"
 )
@@ -19,88 +20,101 @@ func NextCombatUUID() int64 {
 
 // Player is the base struct representing connected entities.
 type Combat struct {
-	UUID         string           // The combat unique identifier on the server.
-	Started      bool             // Wether this combat has started or not.
-	MinPlayers   int              // The minimum number of players that can join.
-	MaxPlayers   int              // The maximum number of players that can join.
-	Players      map[*Player]bool // Maintains a list of known players.
-	CommandQueue chan *cbt.Base   // The Combat command queue.
+	mutex        sync.Mutex       // The lock for this combat.
+	uuid         string           // The combat unique identifier on the server.
+	started      bool             // Wether this combat has started or not.
+	minPlayers   int              // The minimum number of players that can join.
+	maxPlayers   int              // The maximum number of players that can join.
+	players      map[*Player]bool // Maintains a list of known players.
+	commandQueue chan interface{} // The Combat command queue.
 }
 
-func (combat *Combat) AsSendable() *map[string]interface{} {
-	return &map[string]interface{}{
-		"uuid":       combat.UUID,
-		"minPlayers": combat.MinPlayers,
-		"maxPlayers": combat.MaxPlayers,
+func (combat *Combat) UUID() string                   { return combat.uuid }
+func (combat *Combat) CommandQueue() chan interface{} { return combat.commandQueue }
+
+func NewCombat(minPlayers int, maxPlayers int) *Combat {
+	return &Combat{
+		mutex:        sync.Mutex{},
+		uuid:         fmt.Sprintf("CBT%d", NextCombatUUID()),
+		started:      false,
+		minPlayers:   minPlayers,
+		maxPlayers:   maxPlayers,
+		players:      make(map[*Player]bool),
+		commandQueue: make(chan interface{}, *config.HubCommandBufferSize),
+	}
+}
+func (hub *Hub) RunNewCombat(minPlayers int, maxPlayers int) *Combat {
+	ret := NewCombat(minPlayers, maxPlayers)
+	go ret.Run()
+	return ret
+}
+
+func (combat *Combat) AsSendable() *util.JsonMap {
+	return &util.JsonMap{
+		"uuid":       combat.uuid,
+		"minPlayers": combat.minPlayers,
+		"maxPlayers": combat.maxPlayers,
 		"players":    combat.SendablePlayers(),
 	}
 }
-func (combat *Combat) SendablePlayers() *[]*map[string]interface{} {
-	players := make([]*map[string]interface{}, len(combat.Players))
+func (combat *Combat) SendablePlayers() *[]*util.JsonMap {
+	players := make([]*util.JsonMap, len(combat.players))
 	idx := 0
-	for player, _ := range combat.Players {
+	for player, _ := range combat.players {
 		players[idx] = player.AsSendable()
 		idx++
 	}
 	return &players
 }
 
-// NewPlayer is exposed on the Hub class.
-func (hub *Hub) RunNewCombat(minPlayers int, maxPlayers int) *Combat {
-	ret := &Combat{
-		UUID:         fmt.Sprintf("CBT%d", NextCombatUUID()),
-		Started:      false,
-		MinPlayers:   minPlayers,
-		MaxPlayers:   maxPlayers,
-		Players:      make(map[*Player]bool),
-		CommandQueue: make(chan *cbt.Base, *config.HubCommandBufferSize),
-	}
-	go ret.Run()
-	return ret
+func (combat *Combat) WhileLocked(do func()) {
+	combat.mutex.Lock()
+	do()
+	combat.mutex.Unlock()
 }
 
 func (combat *Combat) Run() {
-	log.Info("Starting combat %s loop.", combat.UUID)
+	log.Info("Starting combat %s loop.", combat.uuid)
 	// Loop.
 	for {
 		// Wait for any event to occur.
 		select {
-		case cmd := <-combat.CommandQueue:
-			switch sub := cmd.Command.(type) {
+		case iCmd := <-combat.commandQueue:
+			switch sub := iCmd.(*cbt.Base).Command.(type) {
 
 			// Register a new player.
 			case cbt.AddPlayer:
 				player := sub.Player.(*Player)
-				if _, ok := combat.Players[player]; !ok {
+				if _, ok := combat.players[player]; !ok {
 					// Notify all other players.
 					notification := tx.Wrap(tx.CombatPlayerJoined{Player: player.AsSendable()})
-					for otherPlayer, _ := range combat.Players {
-						otherPlayer.Send <- notification
+					for otherPlayer, _ := range combat.players {
+						otherPlayer.CommandQueue() <- notification
 					}
 					// Add the originator to our list of players.
-					combat.Players[player] = true
+					combat.players[player] = true
 					// The originator can join.
-					player.Send <- tx.Wrap(tx.CombatJoin{Combat: combat.AsSendable()})
+					player.CommandQueue() <- tx.Wrap(tx.CombatJoin{Combat: combat.AsSendable()})
 				}
 				// We reached the correct number of players, start the combat!
-				if combat.MaxPlayers <= len(combat.Players) {
+				if combat.maxPlayers <= len(combat.players) {
 					notification := tx.Wrap(tx.CombatStart{
-						UUID:    combat.UUID,
+						UUID:    combat.uuid,
 						Players: combat.PlayerList(),
 					})
-					for otherPlayer, _ := range combat.Players {
-						otherPlayer.Send <- notification
+					for otherPlayer, _ := range combat.players {
+						otherPlayer.CommandQueue() <- notification
 					}
 				}
 
 			// Unregister a player.
 			case cbt.RemovePlayer:
 				player := sub.Player.(*Player)
-				delete(combat.Players, sub.Player.(*Player))
+				delete(combat.players, sub.Player.(*Player))
 				// Notify all other players.
-				notification := tx.Wrap(tx.CombatPlayerLeft{UUID: player.UUID})
-				for otherPlayer, _ := range combat.Players {
-					otherPlayer.Send <- notification
+				notification := tx.Wrap(tx.CombatPlayerLeft{UUID: player.UUID()})
+				for otherPlayer, _ := range combat.players {
+					otherPlayer.CommandQueue() <- notification
 				}
 			}
 		}
@@ -110,8 +124,8 @@ func (combat *Combat) Run() {
 // Builds a players list.
 func (combat *Combat) PlayerList() *[]string {
 	ret := make([]string, 0)
-	for player, _ := range combat.Players {
-		ret = append(ret, player.UUID)
+	for player, _ := range combat.players {
+		ret = append(ret, player.UUID())
 	}
 	return &ret
 }
