@@ -9,3 +9,4 @@ func Wrap(sub interface{}) *Base {
 type Base struct{ Command interface{} }
 type AddPlayer struct{ Player i.Player }
 type RemovePlayer struct{ Player i.Player }
+type Start struct{}

@@ -120,7 +120,7 @@ func (player *Player) CommandFromPacket(line []byte) *rx.Base {
 		// 	Translation: math.NewVectorFromMap(rec.Map("translation")),
 		// })
 
-		data := util.JsonMapFromInterface(rec["rotation"])
+		data := util.JsonMapFromMap(rec["rotation"])
 		rot := math.NewQuaternionFromMap(data)
 		piece := math.NewSamplePiece().Rotate(rot)
 		player.commandQueue <- tx.Wrap(tx.CombatPlayerTurn{

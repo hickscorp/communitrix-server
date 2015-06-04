@@ -38,8 +38,9 @@ type CombatPlayerLeft struct {
 	UUID string `json:"uuid"`
 }
 type CombatStart struct {
-	UUID    string    `json:"uuid"`    // The combat unique identifier on the server.
-	Players *[]string `json:"players"` // The list of players.
+	UUID   string      `json:"uuid"` // The combat unique identifier on the server.
+	Target interface{} `json:"target"`
+	Pieces interface{} `json:"pieces"`
 }
 type CombatNewTurn struct{}
 type CombatPlayerTurn struct {

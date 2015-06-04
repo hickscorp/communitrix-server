@@ -1,5 +1,12 @@
 package math
 
+import (
+	"github.com/op/go-logging"
+	"math/rand"
+)
+
+var log = logging.MustGetLogger("communitrix")
+
 type Piece []*Vector
 
 func NewSamplePiece() *Piece {
@@ -9,6 +16,21 @@ func NewSamplePiece() *Piece {
 		&Vector{2, 0, 0},
 		&Vector{1, 1, 0},
 	}
+}
+
+func NewRandomPiece(size *Vector, density int32) *Piece {
+	ret := make(Piece, 0)
+	for x := 0; x < size.X; x++ {
+		for y := 0; y < size.Y; y++ {
+			for z := 0; z < size.Z; z++ {
+				rnd := rand.Int31n(100)
+				if rnd <= density {
+					ret = append(ret, &Vector{x, y, z})
+				}
+			}
+		}
+	}
+	return &ret
 }
 
 // Each allows to perform a given function over each of this object's components. The current object is then returned for chaining.

@@ -26,13 +26,6 @@ func NewHub() *Hub {
 	return hub
 }
 
-// RunNewHub is a helper method to easily run a new Hub object.
-func RunNewHub() *Hub {
-	hub := NewHub()
-	go hub.Run()
-	return hub
-}
-
 // This handler is used from the main program as it's websocket upgrader.
 func (hub *Hub) HandleClient(conn net.Conn) {
 	// Whenever this method exits, close the connection.
@@ -75,7 +68,8 @@ func (hub *Hub) Run() {
 				combats := make([]string, 0)
 				if len(hub.combats) == 0 {
 					log.Warning("This server has no combats, creating a default one.")
-					combat := hub.RunNewCombat(2, 6)
+					combat := NewCombat(2, 4)
+					go combat.Run()
 					hub.combats[combat.UUID()] = combat
 				}
 				for uuid, _ := range hub.combats {
@@ -86,7 +80,8 @@ func (hub *Hub) Run() {
 				})
 			// Player wants to create a combat.
 			case rx.CombatCreate:
-				combat := hub.RunNewCombat(sub.MinPlayers, sub.MaxPlayers)
+				combat := NewCombat(sub.MinPlayers, sub.MaxPlayers)
+				go combat.Run()
 				hub.combats[combat.UUID()] = combat
 				hub.commandQueue <- *rx.Wrap(player, rx.CombatJoin{UUID: combat.UUID()})
 			// Player wants to join a combat.

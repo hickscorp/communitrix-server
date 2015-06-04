@@ -40,8 +40,8 @@ func main() {
 	defer listener.Close()
 
 	// Create and run our hub.
-	hub := RunNewHub()
-	log.Info("Listening on %s", addr)
+	hub := NewHub()
+	go hub.Run()
 	for {
 		// Listen for an incoming connection.
 		conn, err := listener.Accept()
