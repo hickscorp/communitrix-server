@@ -8,9 +8,11 @@ import (
 	"os"
 )
 
-var config = Config{}
-var log = logging.MustGetLogger("communitrix")
-var format = logging.MustStringFormatter("%{color}%{level:.1s} %{shortfunc}%{color:reset} %{message}")
+var (
+	config = Config{}
+	log    = logging.MustGetLogger("communitrix")
+	format = logging.MustStringFormatter("%{color}%{level:.1s} %{shortfunc}%{color:reset} %{message}")
+)
 
 func init() {
 	logging.SetFormatter(format)
@@ -38,7 +40,7 @@ func main() {
 	}
 	// Close the listener when the application closes.
 	defer listener.Close()
-
+	log.Info("Server is ready on %s.", addr)
 	// Create and run our hub.
 	hub := NewHub()
 	go hub.Run()

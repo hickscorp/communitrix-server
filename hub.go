@@ -31,12 +31,7 @@ func (hub *Hub) HandleClient(conn net.Conn) {
 	// Whenever this method exits, close the connection.
 	defer conn.Close()
 	// Store the player information for this connection.
-	player := NewPlayer(conn)
-	// Send our welcome message.
-	player.CommandQueue() <- tx.Wrap(tx.Welcome{Message: "Hi there!"})
-	// Start the writing loop thread, then start reading from the connection.
-	go player.WriteLoop()
-	player.ReadLoop(hub.commandQueue)
+	StartNewPlayer(hub.commandQueue, conn)
 }
 
 // Run is the main loop for any Hub object.

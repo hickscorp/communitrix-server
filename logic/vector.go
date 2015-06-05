@@ -1,8 +1,6 @@
-package math
+package logic
 
-import (
-	"communitrix/util"
-)
+import "communitrix/util"
 
 // Vector represents a point inside a integer coordinate system space.
 type Vector struct {
@@ -12,14 +10,19 @@ type Vector struct {
 }
 
 // FromMap replaces the contents of the current object's values by the ones in the given map. The current object is then returned for chaining.
-func (this *Vector) FromMap(m *util.JsonMap) *Vector {
+func (this *Vector) FromMap(m *util.MapHelper) *Vector {
 	this.X, this.Y, this.Z = m.Int("x"), m.Int("y"), m.Int("z")
 	return this
 }
 
 // NewVectorFromMap instanciates a new object given a map.
-func NewVectorFromMap(data *util.JsonMap) *Vector {
+func NewVectorFromMap(data *util.MapHelper) *Vector {
 	return (&Vector{}).FromMap(data)
+}
+
+// Allows to deep-copy a vector.
+func (this *Vector) Copy() *Vector {
+	return &Vector{this.X, this.Y, this.Z}
 }
 
 // Translate applies a translation transformation to the current object. The current object is then returned for chaining.

@@ -1,11 +1,6 @@
-package math
+package logic
 
-import (
-	"github.com/op/go-logging"
-	"math/rand"
-)
-
-var log = logging.MustGetLogger("communitrix")
+import "math/rand"
 
 type Piece []*Vector
 
@@ -18,17 +13,26 @@ func NewSamplePiece() *Piece {
 	}
 }
 
-func NewRandomPiece(size *Vector, density int32) *Piece {
+func NewRandomPiece(size *Vector, density int) *Piece {
 	ret := make(Piece, 0)
 	for x := 0; x < size.X; x++ {
 		for y := 0; y < size.Y; y++ {
 			for z := 0; z < size.Z; z++ {
-				rnd := rand.Int31n(100)
+				rnd := rand.Intn(100)
 				if rnd <= density {
 					ret = append(ret, &Vector{x, y, z})
 				}
 			}
 		}
+	}
+	return &ret
+}
+
+// Allow to deep-copy a piece.
+func (this *Piece) Copy() *Piece {
+	ret := make(Piece, len(*this))
+	for idx, v := range *this {
+		ret[idx] = v.Copy()
 	}
 	return &ret
 }

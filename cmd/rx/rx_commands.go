@@ -29,7 +29,7 @@ type CombatJoin struct {
 }
 type CombatLeave struct{}
 type CombatPlayTurn struct {
-	UUID        string      // The piece ID.
-	Rotation    interface{} // The Quaternion representing the rotation.
-	Translation interface{} // The Vector representing the rotation.
+	UUID        string
+	Rotation    interface{}
+	Translation interface{}
 }

@@ -32,7 +32,7 @@ type CombatJoin struct {
 	Combat interface{} `json:"combat"` // The combat details.
 }
 type CombatPlayerJoined struct {
-	Player *util.JsonMap `json:"player"`
+	Player *util.MapHelper `json:"player"`
 }
 type CombatPlayerLeft struct {
 	UUID string `json:"uuid"`

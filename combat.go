@@ -4,14 +4,16 @@ import (
 	"communitrix/cmd/cbt"
 	"communitrix/cmd/tx"
 	"communitrix/i"
-	"communitrix/math"
+	"communitrix/logic"
 	"communitrix/util"
 	"fmt"
 	"sync"
 )
 
-var combatUUIDMutex = &sync.Mutex{}
-var combatUUID int64 = 0
+var (
+	combatUUIDMutex       = &sync.Mutex{}
+	combatUUID      int64 = 0
+)
 
 func NextCombatUUID() int64 {
 	combatUUIDMutex.Lock()
@@ -29,10 +31,12 @@ type Combat struct {
 	maxPlayers   int                 // The maximum number of players that can join.
 	players      map[string]i.Player // Maintains a list of known players.
 	commandQueue chan interface{}    // The Combat command queue.
+	target       *logic.Piece        // The objective for all players.
+	pieces       *[]*logic.Piece     // The pieces all players are given.
 }
 
-func (combat *Combat) UUID() string                   { return combat.uuid }
-func (combat *Combat) CommandQueue() chan interface{} { return combat.commandQueue }
+func (combat *Combat) UUID() string                     { return combat.uuid }
+func (combat *Combat) CommandQueue() chan<- interface{} { return combat.commandQueue }
 
 func NewCombat(minPlayers int, maxPlayers int) *Combat {
 	return &Combat{
@@ -43,19 +47,21 @@ func NewCombat(minPlayers int, maxPlayers int) *Combat {
 		maxPlayers:   maxPlayers,
 		players:      make(map[string]i.Player),
 		commandQueue: make(chan interface{}, *config.HubCommandBufferSize),
+		target:       logic.NewSamplePiece(),
+		pieces:       &[]*logic.Piece{},
 	}
 }
 
-func (combat *Combat) AsSendable() *util.JsonMap {
-	return &util.JsonMap{
+func (combat *Combat) AsSendable() *util.MapHelper {
+	return &util.MapHelper{
 		"uuid":       combat.uuid,
 		"minPlayers": combat.minPlayers,
 		"maxPlayers": combat.maxPlayers,
 		"players":    combat.sendablePlayers(),
 	}
 }
-func (combat *Combat) sendablePlayers() *[]*util.JsonMap {
-	players := make([]*util.JsonMap, len(combat.players))
+func (combat *Combat) sendablePlayers() *[]*util.MapHelper {
+	players := make([]*util.MapHelper, len(combat.players))
 	idx := 0
 	for _, player := range combat.players {
 		players[idx] = player.AsSendable()
@@ -77,27 +83,27 @@ func (combat *Combat) Run() {
 		// Wait for any event to occur.
 		select {
 		case iCmd := <-combat.commandQueue:
-			switch sub := iCmd.(*cbt.Base).Command.(type) {
+			switch cmd := iCmd.(*cbt.Base).Command.(type) {
 
 			// Register a new player.
 			case cbt.AddPlayer:
 				if combat.started {
-					sub.Player.CommandQueue() <- tx.Wrap(tx.Error{
+					cmd.Player.CommandQueue() <- tx.Wrap(tx.Error{
 						Code:   422,
 						Reason: "This combat has already started, you cannot join it anymore.",
 					})
 					continue
 				}
-				if _, ok := combat.players[sub.Player.UUID()]; !ok {
+				if _, ok := combat.players[cmd.Player.UUID()]; !ok {
 					// Notify all other players.
-					notification := tx.Wrap(tx.CombatPlayerJoined{Player: sub.Player.AsSendable()})
+					notification := tx.Wrap(tx.CombatPlayerJoined{Player: cmd.Player.AsSendable()})
 					for _, otherPlayer := range combat.players {
 						otherPlayer.CommandQueue() <- notification
 					}
 					// Add the originator to our list of players.
-					combat.players[sub.Player.UUID()] = sub.Player
+					combat.players[cmd.Player.UUID()] = cmd.Player
 					// The originator can join.
-					sub.Player.CommandQueue() <- tx.Wrap(tx.CombatJoin{Combat: combat.AsSendable()})
+					cmd.Player.CommandQueue() <- tx.Wrap(tx.CombatJoin{Combat: combat.AsSendable()})
 				}
 				// We reached the correct number of players, start the combat!
 				pCount := len(combat.players)
@@ -110,21 +116,32 @@ func (combat *Combat) Run() {
 			// Unregister a player.
 			case cbt.RemovePlayer:
 				if combat.started {
-					sub.Player.CommandQueue() <- tx.Wrap(tx.Error{
+					cmd.Player.CommandQueue() <- tx.Wrap(tx.Error{
 						Code:   422,
 						Reason: "This combat has already started, you cannot join it anymore.",
 					})
 					continue
 				}
-				delete(combat.players, sub.Player.UUID())
+				delete(combat.players, cmd.Player.UUID())
 				// Notify all other players.
-				notification := tx.Wrap(tx.CombatPlayerLeft{UUID: sub.Player.UUID()})
+				notification := tx.Wrap(tx.CombatPlayerLeft{UUID: cmd.Player.UUID()})
 				for _, otherPlayer := range combat.players {
 					otherPlayer.CommandQueue() <- notification
 				}
 
 			case cbt.Start:
 				combat.Start()
+
+			case cbt.PlayTurn:
+				newPiece := combat.target.Copy().Rotate(cmd.Rotation)
+				notification := tx.Wrap(tx.CombatPlayerTurn{
+					PlayerUUID: cmd.Player.UUID(),
+					Contents:   newPiece,
+				})
+				for _, player := range combat.players {
+					player.CommandQueue() <- notification
+				}
+
 			}
 		}
 	}
@@ -138,18 +155,19 @@ func (combat *Combat) Start() {
 	combat.started = true
 
 	// Generate a random fuel cell.
-	target := math.NewRandomPiece(&math.Vector{3, 3, 3}, 50)
-	pieces := &[]math.Piece{}
+	combat.target = logic.NewRandomPiece(&logic.Vector{3, 3, 3}, 50)
+	pieces := make([]*logic.Piece, 0)
+	combat.pieces = &pieces
 	// Break the fuel cell into pieces.
 	// ...
 
 	n1 := tx.Wrap(tx.CombatStart{
 		UUID:   combat.uuid,
-		Target: &target,
-		Pieces: &pieces,
+		Target: combat.target,
+		Pieces: combat.pieces,
 	})
 	n2 := tx.Wrap(tx.CombatPlayerTurn{
-		Contents: target,
+		Contents: combat.target,
 	})
 	for _, otherPlayer := range combat.players {
 		otherPlayer.CommandQueue() <- n1

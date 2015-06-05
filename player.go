@@ -6,7 +6,7 @@ import (
 	"communitrix/cmd/rx"
 	"communitrix/cmd/tx"
 	"communitrix/i"
-	"communitrix/math"
+	"communitrix/logic"
 	"communitrix/util"
 	"encoding/json"
 	"fmt"
@@ -16,8 +16,10 @@ import (
 	"time"
 )
 
-var playerUUIDMutex = &sync.Mutex{}
-var playerUUID int64 = 0
+var (
+	playerUUIDMutex       = &sync.Mutex{}
+	playerUUID      int64 = 0
+)
 
 func NextPlayerUUID() int64 {
 	playerUUIDMutex.Lock()
@@ -37,15 +39,14 @@ type Player struct {
 	combat       i.Combat         // The combat the player is currently in.
 }
 
-func (player *Player) UUID() string                   { return player.uuid }
-func (player *Player) Username() string               { return player.username }
-func (player *Player) SetUsername(username string)    { player.username = username }
-func (player *Player) Level() int                     { return player.level }
-func (player *Player) Connection() net.Conn           { return player.connection }
-func (player *Player) Combat() i.Combat               { return player.combat }
-func (player *Player) CommandQueue() chan interface{} { return player.commandQueue }
+func (player *Player) UUID() string                     { return player.uuid }
+func (player *Player) Username() string                 { return player.username }
+func (player *Player) SetUsername(username string)      { player.username = username }
+func (player *Player) Level() int                       { return player.level }
+func (player *Player) Connection() net.Conn             { return player.connection }
+func (player *Player) Combat() i.Combat                 { return player.combat }
+func (player *Player) CommandQueue() chan<- interface{} { return player.commandQueue }
 
-// NewPlayer is exposed on the Hub class.
 func NewPlayer(connection net.Conn) *Player {
 	return &Player{
 		mutex:        sync.Mutex{},
@@ -55,9 +56,17 @@ func NewPlayer(connection net.Conn) *Player {
 		combat:       nil,
 	}
 }
+func StartNewPlayer(cq chan<- interface{}, connection net.Conn) {
+	player := NewPlayer(connection)
+	// Send our welcome message.
+	player.CommandQueue() <- tx.Wrap(tx.Welcome{Message: "Hi there!"})
+	// Start the writing loop thread, then start reading from the connection.
+	go player.writeLoop()
+	player.readLoop(cq)
+}
 
-func (player *Player) AsSendable() *util.JsonMap {
-	return &util.JsonMap{
+func (player *Player) AsSendable() *util.MapHelper {
+	return &util.MapHelper{
 		"uuid":     player.uuid,
 		"username": player.username,
 		"level":    player.level,
@@ -93,8 +102,8 @@ func (player *Player) LeaveCombat() bool {
 
 // CommandFromPacket processes a JSON-formated payload and attempts to transform it into a hub command.
 func (player *Player) CommandFromPacket(line []byte) *rx.Base {
-	// Deserialize the line to a util.JsonMap.
-	var rec util.JsonMap
+	// Deserialize the line to a util.MapHelper.
+	var rec util.MapHelper
 	if err := json.Unmarshal(line, &rec); err != nil {
 		log.Warning("[comms] Player %s has sent a packet we are unable to unmarshall: %s - %s.", player.uuid, err, line)
 		return nil
@@ -105,8 +114,12 @@ func (player *Player) CommandFromPacket(line []byte) *rx.Base {
 	// Those commands need to pass through the hub.
 	case "Register":
 		return rx.Wrap(player, rx.Register{Username: rec.String("username")})
+
+	// User wants a list of existing combats.
 	case "CombatList":
 		return rx.Wrap(player, rx.CombatList{})
+
+	// User wants to join the combat.
 	case "CombatJoin":
 		return rx.Wrap(player, rx.CombatJoin{
 			UUID: rec.String("uuid"),
@@ -114,21 +127,24 @@ func (player *Player) CommandFromPacket(line []byte) *rx.Base {
 
 	// User wants to play his turn.
 	case "CombatPlayTurn":
-		// return rx.Wrap(player, rx.CombatPlayTurn{
-		// 	UUID:        rec.String("uuid"),
-		// 	Rotation:    math.NewQuaternionFromMap(rec.Map("rotation")),
-		// 	Translation: math.NewVectorFromMap(rec.Map("translation")),
-		// })
-
-		data := util.JsonMapFromMap(rec["rotation"])
-		rot := math.NewQuaternionFromMap(data)
-		piece := math.NewSamplePiece().Rotate(rot)
-		player.commandQueue <- tx.Wrap(tx.CombatPlayerTurn{
-			PlayerUUID: player.uuid,
-			Contents:   piece,
+		if !player.IsInCombat() {
+			log.Warning("Player %s requested to play a turn combat, but he is not in a combat.", player.uuid)
+			player.commandQueue <- tx.Wrap(tx.Error{
+				Code:   422,
+				Reason: "You cannot leave a combat while not participating a combat.",
+			})
+			break
+		}
+		player.WhileLocked(func() {
+			player.combat.CommandQueue() <- cbt.Wrap(cbt.PlayTurn{
+				Player:      player,
+				UUID:        rec.String("uuid"),
+				Rotation:    logic.NewQuaternionFromMap(rec.Map("rotation")),
+				Translation: logic.NewVectorFromMap(rec.Map("translation")),
+			})
 		})
-		return nil
 
+	// User wants to leave the combat.
 	case "CombatLeave":
 		if !player.LeaveCombat() {
 			log.Warning("Player %s requested to leave combat, but he is not in one.", player.uuid)
@@ -136,6 +152,7 @@ func (player *Player) CommandFromPacket(line []byte) *rx.Base {
 				Code:   422,
 				Reason: "You cannot leave a combat while not participating one.",
 			})
+			break
 		}
 
 	default:
@@ -144,12 +161,13 @@ func (player *Player) CommandFromPacket(line []byte) *rx.Base {
 			Code:   422,
 			Reason: "The command you sent could not be understood by the server.",
 		})
+		break
 	}
 	return nil
 }
 
 // ReadLoop pumps messages from the player to the hub.
-func (player *Player) ReadLoop(cq chan interface{}) {
+func (player *Player) readLoop(cq chan<- interface{}) {
 	// Whenever the read loop exits, unregister the player from the hub and close the connection.
 	defer func() {
 		// Signal our write queue to exit.
@@ -172,11 +190,7 @@ func (player *Player) ReadLoop(cq chan interface{}) {
 }
 
 // WriteLoop pumps messages from the hub to the player.
-func (player *Player) WriteLoop() {
-	ticker := time.NewTicker(time.Second * 1)
-	// Whenever this method returns, stop the ping timer for this connection and close the it.
-	defer ticker.Stop()
-
+func (player *Player) writeLoop() {
 	// Loop until data is ready to be sent.
 	json := json.NewEncoder(player.connection)
 	for {
@@ -205,7 +219,7 @@ func (player *Player) WriteLoop() {
 					return
 				}
 			}
-		case <-ticker.C:
+		case <-time.After(1 * time.Second):
 		}
 	}
 }
