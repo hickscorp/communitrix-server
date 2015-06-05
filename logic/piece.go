@@ -11,12 +11,16 @@ func NewRandomPiece(size *Vector, density int) *Piece {
 			for z := 0; z < size.Z; z++ {
 				rnd := rand.Intn(100)
 				if rnd <= density {
-					ret = append(ret, &Vector{x, y, z})
 				}
 			}
 		}
 	}
 	return &ret
+}
+
+func (this *Piece) BreakIntoPieces (fuzyness int) *[]*Piece {
+	ret := make([]*Piece, 0)
+	return &ret;
 }
 
 // Allow to deep-copy a piece.
