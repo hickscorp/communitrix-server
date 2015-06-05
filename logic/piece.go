@@ -18,6 +18,7 @@ func NewRandomPiece(size *Vector, density int) *Piece {
 	return &ret
 }
 
+// BreakIntoPieces takes a piece and breaks it down to smaller pieces.
 func (this *Piece) BreakIntoPieces (fuzyness int) *[]*Piece {
 	ret := make([]*Piece, 0)
 	return &ret;
