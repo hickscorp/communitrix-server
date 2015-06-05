@@ -1,9 +1,9 @@
 package main
 
 import (
-	"communitrix/cmd/rx"
-	"communitrix/cmd/tx"
-	"communitrix/i"
+	"gogs.pierreqr.fr/doodloo/communitrix/cmd/rx"
+	"gogs.pierreqr.fr/doodloo/communitrix/cmd/tx"
+	"gogs.pierreqr.fr/doodloo/communitrix/i"
 	"net"
 	"reflect"
 )

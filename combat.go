@@ -1,12 +1,12 @@
 package main
 
 import (
-	"communitrix/cmd/cbt"
-	"communitrix/cmd/tx"
-	"communitrix/i"
-	"communitrix/logic"
-	"communitrix/util"
 	"fmt"
+	"gogs.pierreqr.fr/doodloo/communitrix/cmd/cbt"
+	"gogs.pierreqr.fr/doodloo/communitrix/cmd/tx"
+	"gogs.pierreqr.fr/doodloo/communitrix/i"
+	"gogs.pierreqr.fr/doodloo/communitrix/logic"
+	"gogs.pierreqr.fr/doodloo/communitrix/util"
 	"sync"
 )
 

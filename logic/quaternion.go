@@ -1,6 +1,6 @@
 package logic
 
-import "communitrix/util"
+import "gogs.pierreqr.fr/doodloo/communitrix/util"
 
 // Quaternion encapsulates rotation transforms.
 type Quaternion struct {

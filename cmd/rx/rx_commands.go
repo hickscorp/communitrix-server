@@ -1,6 +1,6 @@
 package rx
 
-import "communitrix/i"
+import "gogs.pierreqr.fr/doodloo/communitrix/i"
 
 func Wrap(player i.Player, sub interface{}) *Base {
 	return &Base{

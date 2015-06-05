@@ -1,7 +1,7 @@
 package i
 
 import (
-	"communitrix/util"
+	"gogs.pierreqr.fr/doodloo/communitrix/util"
 	"net"
 )
 

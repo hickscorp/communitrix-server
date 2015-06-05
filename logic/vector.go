@@ -1,6 +1,6 @@
 package logic
 
-import "communitrix/util"
+import "gogs.pierreqr.fr/doodloo/communitrix/util"
 
 // Vector represents a point inside a integer coordinate system space.
 type Vector struct {
