@@ -32,6 +32,7 @@ type Combat struct {
 	players      map[string]i.Player // Maintains a list of known players.
 	commandQueue chan interface{}    // The Combat command queue.
 	target       *logic.Piece        // The objective for all players.
+	cells        *[]*logic.Piece     // State of each player
 	pieces       *[]*logic.Piece     // The pieces all players are given.
 }
 
@@ -47,8 +48,6 @@ func NewCombat(minPlayers int, maxPlayers int) *Combat {
 		maxPlayers:   maxPlayers,
 		players:      make(map[string]i.Player),
 		commandQueue: make(chan interface{}, *config.HubCommandBufferSize),
-		target:       logic.NewSamplePiece(),
-		pieces:       &[]*logic.Piece{},
 	}
 }
 
@@ -115,13 +114,6 @@ func (combat *Combat) Run() {
 
 			// Unregister a player.
 			case cbt.RemovePlayer:
-				if combat.started {
-					cmd.Player.CommandQueue() <- tx.Wrap(tx.Error{
-						Code:   422,
-						Reason: "This combat has already started, you cannot join it anymore.",
-					})
-					continue
-				}
 				delete(combat.players, cmd.Player.UUID())
 				// Notify all other players.
 				notification := tx.Wrap(tx.CombatPlayerLeft{UUID: cmd.Player.UUID()})
@@ -133,6 +125,14 @@ func (combat *Combat) Run() {
 				combat.Start()
 
 			case cbt.PlayTurn:
+				if !combat.started {
+					log.Warning("Client %s is sending turns while the combat hasn't started.", cmd.Player.UUID())
+					cmd.Player.CommandQueue() <- tx.Wrap(tx.Error{
+						Code:   422,
+						Reason: "You cannot play a turn while the combat has not started.",
+					})
+					continue
+				}
 				newPiece := combat.target.Copy().Rotate(cmd.Rotation)
 				notification := tx.Wrap(tx.CombatPlayerTurn{
 					PlayerUUID: cmd.Player.UUID(),
@@ -141,7 +141,6 @@ func (combat *Combat) Run() {
 				for _, player := range combat.players {
 					player.CommandQueue() <- notification
 				}
-
 			}
 		}
 	}
@@ -158,6 +157,8 @@ func (combat *Combat) Start() {
 	combat.target = logic.NewRandomPiece(&logic.Vector{3, 3, 3}, 50)
 	pieces := make([]*logic.Piece, 0)
 	combat.pieces = &pieces
+	cells := make([]*logic.Piece, 0)
+	combat.cells = &cells
 	// Break the fuel cell into pieces.
 	// ...
 
@@ -165,6 +166,7 @@ func (combat *Combat) Start() {
 		UUID:   combat.uuid,
 		Target: combat.target,
 		Pieces: combat.pieces,
+		Cells:  combat.cells,
 	})
 	n2 := tx.Wrap(tx.CombatPlayerTurn{
 		Contents: combat.target,

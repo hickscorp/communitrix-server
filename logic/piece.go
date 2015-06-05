@@ -4,15 +4,6 @@ import "math/rand"
 
 type Piece []*Vector
 
-func NewSamplePiece() *Piece {
-	return &Piece{
-		&Vector{0, 0, 0},
-		&Vector{1, 0, 0},
-		&Vector{2, 0, 0},
-		&Vector{1, 1, 0},
-	}
-}
-
 func NewRandomPiece(size *Vector, density int) *Piece {
 	ret := make(Piece, 0)
 	for x := 0; x < size.X; x++ {

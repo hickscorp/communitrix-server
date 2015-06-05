@@ -21,7 +21,7 @@ func init() {
 
 func main() {
 	// Allows to parse a single parameter, the port.
-	config.Port = flag.Int("port", 8080, "Port to serve on.")
+	config.Port = flag.Int("port", 9003, "Port to serve on.")
 	config.HubCommandBufferSize = flag.Int("hubCommandBuffer", 4096, "Size of the hub command queue buffer.")
 	config.ClientSendBufferSize = flag.Int("clientSendBufferSize", 64, "Size of the client send queue buffer.")
 	logLevel := flag.String("logLevel", "WARNING", "Log level [DEBUG|INFO|WARNING|ERROR|CRITICAL].")
