@@ -13,9 +13,16 @@ type Player interface {
 	Connection() net.Conn             // Connection.
 	Combat() Combat                   // Combat if any.
 	CommandQueue() chan<- interface{} // Command queue, write-only to the outside world.
-	AsSendable() *util.MapHelper      // Serialization.
+	AsSendable() util.MapHelper       // Serialization.
 	WhileLocked(do func())            // Lock then do something.
 	IsInCombat() bool                 // Query combat.
 	JoinCombat(combat Combat)         // Join a combat.
 	LeaveCombat() bool                // Leave a combat.
+}
+
+type Combat interface {
+	UUID() string                     // The UUID.
+	CommandQueue() chan<- interface{} // The command queue, write-only to the outside world.
+	AsSendable() util.MapHelper       // Serialization.
+	WhileLocked(func())               // Lock then do something.
 }

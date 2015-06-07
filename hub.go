@@ -70,9 +70,7 @@ func (hub *Hub) Run() {
 				for uuid, _ := range hub.combats {
 					combats = append(combats, uuid)
 				}
-				player.CommandQueue() <- tx.Wrap(tx.CombatList{
-					Combats: &combats,
-				})
+				player.CommandQueue() <- tx.Wrap(tx.CombatList{Combats: combats})
 			// Player wants to create a combat.
 			case rx.CombatCreate:
 				combat := NewCombat(sub.MinPlayers, sub.MaxPlayers)

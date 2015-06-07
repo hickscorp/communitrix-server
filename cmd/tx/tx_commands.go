@@ -27,22 +27,22 @@ type Registered struct {
 }
 
 type CombatList struct {
-	Combats *[]string `json:"combats"`
+	Combats []string `json:"combats"`
 }
 type CombatJoin struct {
 	Combat interface{} `json:"combat"` // The combat details.
 }
 type CombatPlayerJoined struct {
-	Player *util.MapHelper `json:"player"`
+	Player util.MapHelper `json:"player"`
 }
 type CombatPlayerLeft struct {
 	UUID string `json:"uuid"`
 }
 type CombatStart struct {
-	UUID   string          `json:"uuid"` // The combat unique identifier on the server.
-	Target *logic.Piece    `json:"target"`
-	Cells  *[]*logic.Piece `json:"cells"`
-	Pieces *[]*logic.Piece `json:"pieces"`
+	UUID   string        `json:"uuid"` // The combat unique identifier on the server.
+	Target logic.Piece   `json:"target"`
+	Cells  []logic.Piece `json:"cells"`
+	Pieces []logic.Piece `json:"pieces"`
 }
 type CombatNewTurn struct{}
 type CombatPlayerTurn struct {

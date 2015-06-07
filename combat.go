@@ -31,9 +31,9 @@ type Combat struct {
 	maxPlayers   int                 // The maximum number of players that can join.
 	players      map[string]i.Player // Maintains a list of known players.
 	commandQueue chan interface{}    // The Combat command queue.
-	target       *logic.Piece        // The objective for all players.
-	cells        *[]*logic.Piece     // State of each player
-	pieces       *[]*logic.Piece     // The pieces all players are given.
+	target       logic.Piece         // The objective for all players.
+	cells        []logic.Piece       // State of each player
+	pieces       []logic.Piece       // The pieces all players are given.
 }
 
 func (combat *Combat) UUID() string                     { return combat.uuid }
@@ -51,22 +51,22 @@ func NewCombat(minPlayers int, maxPlayers int) *Combat {
 	}
 }
 
-func (combat *Combat) AsSendable() *util.MapHelper {
-	return &util.MapHelper{
+func (combat *Combat) AsSendable() util.MapHelper {
+	return util.MapHelper{
 		"uuid":       combat.uuid,
 		"minPlayers": combat.minPlayers,
 		"maxPlayers": combat.maxPlayers,
 		"players":    combat.sendablePlayers(),
 	}
 }
-func (combat *Combat) sendablePlayers() *[]*util.MapHelper {
-	players := make([]*util.MapHelper, len(combat.players))
+func (combat *Combat) sendablePlayers() []util.MapHelper {
+	players := make([]util.MapHelper, len(combat.players))
 	idx := 0
 	for _, player := range combat.players {
 		players[idx] = player.AsSendable()
 		idx++
 	}
-	return &players
+	return players
 }
 
 func (combat *Combat) WhileLocked(do func()) {
@@ -155,10 +155,10 @@ func (combat *Combat) Start() {
 
 	// Generate a random fuel cell.
 	combat.target = logic.NewRandomPiece(&logic.Vector{3, 3, 3}, 50)
-	pieces := make([]*logic.Piece, 0)
-	combat.pieces = &pieces
-	cells := make([]*logic.Piece, 0)
-	combat.cells = &cells
+	pieces := make([]logic.Piece, 0)
+	combat.pieces = pieces
+	cells := make([]logic.Piece, 0)
+	combat.cells = cells
 	// Break the fuel cell into pieces.
 	// ...
 

@@ -65,8 +65,8 @@ func StartNewPlayer(cq chan<- interface{}, connection net.Conn) {
 	player.readLoop(cq)
 }
 
-func (player *Player) AsSendable() *util.MapHelper {
-	return &util.MapHelper{
+func (player *Player) AsSendable() util.MapHelper {
+	return util.MapHelper{
 		"uuid":     player.uuid,
 		"username": player.username,
 		"level":    player.level,

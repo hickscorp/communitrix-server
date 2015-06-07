@@ -9,15 +9,15 @@ type Vector struct {
 	Z int `json:"z"`
 }
 
-// FromMap replaces the contents of the current object's values by the ones in the given map. The current object is then returned for chaining.
-func (this *Vector) FromMap(m *util.MapHelper) *Vector {
-	this.X, this.Y, this.Z = m.Int("x"), m.Int("y"), m.Int("z")
-	return this
+// NewVectorFromMap instanciates a new object given a map.
+func NewVectorFromMap(data util.MapHelper) *Vector {
+	return (&Vector{}).FromMap(data)
 }
 
-// NewVectorFromMap instanciates a new object given a map.
-func NewVectorFromMap(data *util.MapHelper) *Vector {
-	return (&Vector{}).FromMap(data)
+// FromMap replaces the contents of the current object's values by the ones in the given map. The current object is then returned for chaining.
+func (this *Vector) FromMap(m util.MapHelper) *Vector {
+	this.X, this.Y, this.Z = m.Int("x"), m.Int("y"), m.Int("z")
+	return this
 }
 
 // Allows to deep-copy a vector.

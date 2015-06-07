@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/op/go-logging"
+	"math/rand"
 	"net"
 	"os"
 )
@@ -24,11 +25,15 @@ func main() {
 	config.Port = flag.Int("port", 9003, "Port to serve on.")
 	config.HubCommandBufferSize = flag.Int("hubCommandBuffer", 4096, "Size of the hub command queue buffer.")
 	config.ClientSendBufferSize = flag.Int("clientSendBufferSize", 64, "Size of the client send queue buffer.")
+	config.Seed = flag.Int64("seed", 18021982, "The random seed to use.")
 	logLevel := flag.String("logLevel", "WARNING", "Log level [DEBUG|INFO|WARNING|ERROR|CRITICAL].")
 	flag.Parse()
 
 	config.LogLevel, _ = logging.LogLevel(*logLevel)
 	logging.SetLevel(config.LogLevel, "communitrix")
+
+	// Initialize random generator.
+	rand.Seed(*config.Seed)
 
 	// Prepare our listen address.
 	addr := fmt.Sprintf("0.0.0.0:%d", *config.Port)

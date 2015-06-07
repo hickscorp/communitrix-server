@@ -11,8 +11,14 @@ type Quaternion struct {
 }
 
 // NewVectorFromMap instanciates a new object given a map.
-func NewQuaternionFromMap(data *util.MapHelper) *Quaternion {
+func NewQuaternionFromMap(data util.MapHelper) *Quaternion {
 	return (&Quaternion{}).FromMap(data)
+}
+
+// FromMap replaces the contents of the current object's values by the ones in the given map. The current object is returned for chaining.
+func (this *Quaternion) FromMap(m util.MapHelper) *Quaternion {
+	this.X, this.Y, this.Z, this.W = m.Float("x"), m.Float("y"), m.Float("z"), m.Float("w")
+	return this
 }
 
 // Allows to deep-copy a vector.
@@ -22,10 +28,4 @@ func (this *Quaternion) Copy() *Quaternion {
 func (this *Quaternion) CopyTo(q *Quaternion) *Quaternion {
 	q.X, q.Y, q.Z, q.W = this.X, this.Y, this.Z, this.W
 	return q
-}
-
-// FromMap replaces the contents of the current object's values by the ones in the given map. The current object is returned for chaining.
-func (this *Quaternion) FromMap(m *util.MapHelper) *Quaternion {
-	this.X, this.Y, this.Z, this.W = m.Float("x"), m.Float("y"), m.Float("z"), m.Float("w")
-	return this
 }
