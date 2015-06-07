@@ -24,6 +24,10 @@ func NewVectorFromMap(data *util.MapHelper) *Vector {
 func (this *Vector) Copy() *Vector {
 	return &Vector{this.X, this.Y, this.Z}
 }
+func (this *Vector) CopyTo(v *Vector) *Vector {
+	v.X, v.Y, v.Z = this.X, this.Y, this.Z
+	return v
+}
 
 // Translate applies a translation transformation to the current object. The current object is then returned for chaining.
 func (this *Vector) Translate(t *Vector) *Vector {

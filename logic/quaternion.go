@@ -15,6 +15,15 @@ func NewQuaternionFromMap(data *util.MapHelper) *Quaternion {
 	return (&Quaternion{}).FromMap(data)
 }
 
+// Allows to deep-copy a vector.
+func (this *Quaternion) Copy() *Quaternion {
+	return &Quaternion{this.X, this.Y, this.Z, this.W}
+}
+func (this *Quaternion) CopyTo(q *Quaternion) *Quaternion {
+	q.X, q.Y, q.Z, q.W = this.X, this.Y, this.Z, this.W
+	return q
+}
+
 // FromMap replaces the contents of the current object's values by the ones in the given map. The current object is returned for chaining.
 func (this *Quaternion) FromMap(m *util.MapHelper) *Quaternion {
 	this.X, this.Y, this.Z, this.W = m.Float("x"), m.Float("y"), m.Float("z"), m.Float("w")
