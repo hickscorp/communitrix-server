@@ -107,7 +107,7 @@ func (combat *Combat) Run() {
 				// We reached the correct number of players, start the combat!
 				pCount := len(combat.players)
 				if pCount == combat.maxPlayers { // It's time to start the combat!
-					combat.Start()
+					combat.commandQueue <- cbt.Prepare{}
 				} else if pCount > combat.maxPlayers { // Impossible case. Just put some logging to make sure.
 					log.Error("BUG: There %d / %d players in combat %s.", pCount, combat.maxPlayers, combat.uuid)
 				}
@@ -121,8 +121,25 @@ func (combat *Combat) Run() {
 					otherPlayer.CommandQueue() <- notification
 				}
 
+			// Should prepare the combat now.
+			case cbt.Prepare:
+				if !combat.started {
+					combat.started = true
+					go combat.Prepare()
+				}
+			// Once the combat is ready... Start it.
 			case cbt.Start:
-				combat.Start()
+				notification := tx.Wrap(tx.CombatStart{
+					UUID:   combat.uuid,
+					Target: combat.target,
+					Pieces: combat.pieces,
+					Cells:  combat.cells,
+				})
+				for _, otherPlayer := range combat.players {
+					otherPlayer.CommandQueue() <- notification
+				}
+			// A new turn has started.
+			case cbt.StartNewTurn:
 
 			case cbt.PlayTurn:
 				if !combat.started {
@@ -146,35 +163,23 @@ func (combat *Combat) Run() {
 	}
 }
 
-func (combat *Combat) Start() {
-	if combat.started {
-		log.Error("Combat cannot be started, as it has already started.")
-		return
-	}
-	combat.started = true
-
+func (combat *Combat) Prepare() {
+	// Cache player count.
 	playerCount := len(combat.players)
+	notification := cbt.Start{}
 
 	// Generate a random fuel cell.
-	combat.target = logic.NewRandomPiece(&logic.Vector{4, 4, 4}, 50)
+	notification.Target = logic.NewRandomPiece(&logic.Vector{4, 4, 4}, 50)
 	// Prepare twice as many pieces as there are players.
-	combat.pieces = make([]logic.Piece, playerCount)
+	notification.Pieces = make([]logic.Piece, playerCount)
 	for i := 0; i < len(combat.pieces); i++ {
 		combat.pieces[i] = logic.NewRandomPiece(&logic.Vector{3, 3, 3}, 30)
 	}
 	// Prepare cells, as many as there are players.
-	combat.cells = make([]logic.Piece, playerCount)
+	notification.Cells = make([]logic.Piece, playerCount)
 	for i := 0; i < len(combat.cells); i++ {
 		combat.cells[i] = logic.Piece{}
 	}
-
-	notification := tx.Wrap(tx.CombatStart{
-		UUID:   combat.uuid,
-		Target: combat.target,
-		Pieces: combat.pieces,
-		Cells:  combat.cells,
-	})
-	for _, otherPlayer := range combat.players {
-		otherPlayer.CommandQueue() <- notification
-	}
+	// Signal combat preparation is over.
+	combat.commandQueue <- notification
 }

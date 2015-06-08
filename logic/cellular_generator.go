@@ -1,5 +1,4 @@
 package logic
 
-struct CellularGenerator {
-
+type CellularGenerator struct {
 }

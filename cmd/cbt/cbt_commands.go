@@ -11,8 +11,14 @@ type Base struct{ Command interface{} }
 type AddPlayer struct{ Player i.Player }
 type RemovePlayer struct{ Player i.Player }
 
-type Start struct{}
+type Prepare struct{}
+type Start struct {
+	Target logic.Piece
+	Pieces []logic.Piece
+	Cells  []logic.Piece
+}
 
+type StartNewTurn struct{}
 type PlayTurn struct {
 	Player      i.Player
 	UUID        string
