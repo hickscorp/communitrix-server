@@ -16,7 +16,7 @@ func NewRandomArrayFiller(min int, max int) ArrayFiller {
 	return func(*Vector) int { return rand.Intn(rnd) + min }
 }
 
-// NewCopyArrayFiller will copy values from a given TriDimensional array.
-func NewCopyArrayFiller(other TriDimArray) ArrayFiller {
-	return func(at *Vector) int { return other[at.X][at.Y][at.Z] }
+// NewCopyArrayFiller will copy values from a given tri-ensional array.
+func NewCopyArrayFiller(other ContentArray) ArrayFiller {
+	return func(at *Vector) int { return other.Content[at.X][at.Y][at.Z] }
 }

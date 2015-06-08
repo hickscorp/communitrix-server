@@ -4,15 +4,19 @@ import (
 	"math/rand"
 )
 
-type Piece []*Vector
+type Piece struct {
+	Size    *Vector   `json:"size"`
+	Content []*Vector `json:"content"`
+}
 
 func NewRandomPiece(size *Vector, density int) Piece {
-	ret := make(Piece, 0)
+	ret := Piece{Size: size}
+	ret.Content = make([]*Vector, 0)
 	for x := 0; x < size.X; x++ {
 		for y := 0; y < size.Y; y++ {
 			for z := 0; z < size.Z; z++ {
 				if rand.Intn(100) <= density {
-					ret = append(ret, &Vector{x, y, z})
+					ret.Content = append(ret.Content, &Vector{x, y, z})
 				}
 			}
 		}
@@ -28,16 +32,17 @@ func (this Piece) BreakIntoPieces(fuzyness int) []Piece {
 
 // Allow to deep-copy a piece.
 func (this Piece) Copy() Piece {
-	ret := make(Piece, len(this))
-	for i, v := range this {
-		ret[i] = v.Copy()
+	ret := Piece{Size: this.Size}
+	ret.Content = make([]*Vector, len(this.Content))
+	for i, v := range this.Content {
+		ret.Content[i] = v.Copy()
 	}
 	return ret
 }
 
 // Each allows to perform a given function over each of this object's components. The current object is then returned for chaining.
 func (this Piece) Each(do func(*Vector)) Piece {
-	for _, v := range this {
+	for _, v := range this.Content {
 		do(v)
 	}
 	return this

@@ -136,7 +136,7 @@ func (combat *Combat) Run() {
 				newPiece := combat.target.Copy().Rotate(cmd.Rotation)
 				notification := tx.Wrap(tx.CombatPlayerTurn{
 					PlayerUUID: cmd.Player.UUID(),
-					Contents:   newPiece,
+					Piece:      newPiece,
 				})
 				for _, player := range combat.players {
 					player.CommandQueue() <- notification
@@ -153,26 +153,28 @@ func (combat *Combat) Start() {
 	}
 	combat.started = true
 
-	// Generate a random fuel cell.
-	combat.target = logic.NewRandomPiece(&logic.Vector{3, 3, 3}, 50)
-	pieces := make([]logic.Piece, 0)
-	combat.pieces = pieces
-	cells := make([]logic.Piece, 0)
-	combat.cells = cells
-	// Break the fuel cell into pieces.
-	// ...
+	playerCount := len(combat.players)
 
-	n1 := tx.Wrap(tx.CombatStart{
+	// Generate a random fuel cell.
+	combat.target = logic.NewRandomPiece(&logic.Vector{4, 4, 4}, 50)
+	// Prepare twice as many pieces as there are players.
+	combat.pieces = make([]logic.Piece, playerCount)
+	for i := 0; i < len(combat.pieces); i++ {
+		combat.pieces[i] = logic.NewRandomPiece(&logic.Vector{3, 3, 3}, 30)
+	}
+	// Prepare cells, as many as there are players.
+	combat.cells = make([]logic.Piece, playerCount)
+	for i := 0; i < len(combat.cells); i++ {
+		combat.cells[i] = logic.Piece{}
+	}
+
+	notification := tx.Wrap(tx.CombatStart{
 		UUID:   combat.uuid,
 		Target: combat.target,
 		Pieces: combat.pieces,
 		Cells:  combat.cells,
 	})
-	n2 := tx.Wrap(tx.CombatPlayerTurn{
-		Contents: combat.target,
-	})
 	for _, otherPlayer := range combat.players {
-		otherPlayer.CommandQueue() <- n1
-		otherPlayer.CommandQueue() <- n2
+		otherPlayer.CommandQueue() <- notification
 	}
 }
