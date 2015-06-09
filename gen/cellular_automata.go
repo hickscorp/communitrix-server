@@ -44,12 +44,11 @@ func (this *CellularAutomata) Run(density float64) *logic.Piece {
 	this.probabilities = array.NewContentArray(this.size, nil)
 	this.result = array.NewContentArray(this.size, nil)
 
-	// Aim for the center, and start filling our initial cell.
-	at := this.size.Copy().Half()
 	// Set the first block inside the results array.
-	this.fillCell(at, 1)
+	this.fillCell(this.size.Copy().Half(), 1)
+	this.fillCell(&logic.Vector{0, 0, 0}, 1)
 	// Keep track of the total number of cells we've added.
-	totalCellsAdded := 1
+	totalCellsAdded := 2
 
 	var cellsPerIteration, freeLocCount, probSum int
 	for {

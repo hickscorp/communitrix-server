@@ -170,7 +170,7 @@ func (combat *Combat) Prepare() {
 	playerCount := len(combat.players)
 	// Prepare notification.
 	notification := cbt.Start{
-		Target: gen.NewCellularAutomata(&logic.Vector{30, 30, 30}).Run(0.8),
+		Target: gen.NewCellularAutomata(&logic.Vector{30, 30, 30}).Run(0.5),
 		Pieces: make([]*logic.Piece, playerCount),
 		Cells:  make([]*logic.Piece, playerCount),
 	}
