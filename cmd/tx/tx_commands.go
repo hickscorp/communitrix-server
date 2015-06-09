@@ -39,14 +39,14 @@ type CombatPlayerLeft struct {
 	UUID string `json:"uuid"`
 }
 type CombatStart struct {
-	UUID   string        `json:"uuid"` // The combat unique identifier on the server.
-	Target logic.Piece   `json:"target"`
-	Cells  []logic.Piece `json:"cells"`
-	Pieces []logic.Piece `json:"pieces"`
+	UUID   string         `json:"uuid"` // The combat unique identifier on the server.
+	Target *logic.Piece   `json:"target"`
+	Cells  []*logic.Piece `json:"cells"`
+	Pieces []*logic.Piece `json:"pieces"`
 }
 type CombatNewTurn struct{}
 type CombatPlayerTurn struct {
-	PlayerUUID string      `json:"playerUUID"`
-	Piece      interface{} `json:"piece"`
+	PlayerUUID string       `json:"playerUUID"`
+	Piece      *logic.Piece `json:"piece"`
 }
 type CombatEnd struct{}
