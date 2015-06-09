@@ -1,27 +1,15 @@
 package logic
 
-import (
-	"math/rand"
-)
-
 type Piece struct {
 	Size    *Vector   `json:"size"`
 	Content []*Vector `json:"content"`
 }
 
-func NewRandomPiece(size *Vector, density int) Piece {
-	ret := Piece{Size: size}
-	ret.Content = make([]*Vector, 0)
-	for x := 0; x < size.X; x++ {
-		for y := 0; y < size.Y; y++ {
-			for z := 0; z < size.Z; z++ {
-				if rand.Intn(100) <= density {
-					ret.Content = append(ret.Content, &Vector{x, y, z})
-				}
-			}
-		}
+func NewEmptyPiece(size *Vector) *Piece {
+	return &Piece{
+		Size:    size,
+		Content: make([]*Vector, 0, size.Volume()),
 	}
-	return ret
 }
 
 // BreakIntoPieces takes a piece and breaks it down to smaller pieces.

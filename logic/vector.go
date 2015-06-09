@@ -20,6 +20,11 @@ func (this *Vector) FromMap(m util.MapHelper) *Vector {
 	return this
 }
 
+func (this *Vector) FromInts(x, y, z int) *Vector {
+	this.X, this.Y, this.Z = x, y, z
+	return this
+}
+
 // Allows to deep-copy a vector.
 func (this *Vector) Copy() *Vector {
 	return &Vector{this.X, this.Y, this.Z}
@@ -27,6 +32,19 @@ func (this *Vector) Copy() *Vector {
 func (this *Vector) CopyTo(v *Vector) *Vector {
 	v.X, v.Y, v.Z = this.X, this.Y, this.Z
 	return v
+}
+
+func (this *Vector) Half() *Vector {
+	this.X, this.Y, this.Z = this.X/2, this.Y/2, this.Z/2
+	return this
+}
+func (this *Vector) Volume() int {
+	return this.X * this.Y * this.Z
+}
+
+// SameAs checks wether two vectors are holding identical values.
+func (this *Vector) SameAs(v *Vector) bool {
+	return this.X == v.X && this.Y == v.Y && this.Z == v.Z
 }
 
 // Translate applies a translation transformation to the current object. The current object is then returned for chaining.

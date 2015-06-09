@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"gogs.pierreqr.fr/doodloo/communitrix/array"
 	"gogs.pierreqr.fr/doodloo/communitrix/cmd/cbt"
 	"gogs.pierreqr.fr/doodloo/communitrix/cmd/tx"
+	"gogs.pierreqr.fr/doodloo/communitrix/gen"
 	"gogs.pierreqr.fr/doodloo/communitrix/i"
 	"gogs.pierreqr.fr/doodloo/communitrix/logic"
 	"gogs.pierreqr.fr/doodloo/communitrix/util"
@@ -107,7 +109,7 @@ func (combat *Combat) Run() {
 				// We reached the correct number of players, start the combat!
 				pCount := len(combat.players)
 				if pCount == combat.maxPlayers { // It's time to start the combat!
-					combat.commandQueue <- cbt.Prepare{}
+					combat.commandQueue <- cbt.Wrap(cbt.Prepare{})
 				} else if pCount > combat.maxPlayers { // Impossible case. Just put some logging to make sure.
 					log.Error("BUG: There %d / %d players in combat %s.", pCount, combat.maxPlayers, combat.uuid)
 				}
@@ -166,20 +168,34 @@ func (combat *Combat) Run() {
 func (combat *Combat) Prepare() {
 	// Cache player count.
 	playerCount := len(combat.players)
-	notification := cbt.Start{}
 
 	// Generate a random fuel cell.
-	notification.Target = logic.NewRandomPiece(&logic.Vector{4, 4, 4}, 50)
+	size := &logic.Vector{10, 10, 10}
+	piece := logic.NewEmptyPiece(size)
+	piece.Content = make([]*logic.Vector, 0, size.Volume())
+	generator := gen.NewCellularAutomata(size).Run()
+	arr := array.NewContentArray(size, generator)
+	arr.Each(func(at *logic.Vector, val int) {
+		if val > 0 {
+			piece.Content = append(piece.Content, at.Copy())
+		}
+	})
+	combat.target = *piece
+
 	// Prepare twice as many pieces as there are players.
-	notification.Pieces = make([]logic.Piece, playerCount)
-	for i := 0; i < len(combat.pieces); i++ {
-		combat.pieces[i] = logic.NewRandomPiece(&logic.Vector{3, 3, 3}, 30)
-	}
+	combat.pieces = make([]logic.Piece, 0, playerCount)
+	// for i := 0; i < len(combat.pieces); i++ {
+	// 	combat.pieces[i] = *logic.NewEmptyPiece(&logic.Vector{3, 3, 3})
+	// }
 	// Prepare cells, as many as there are players.
-	notification.Cells = make([]logic.Piece, playerCount)
+	combat.cells = make([]logic.Piece, playerCount)
 	for i := 0; i < len(combat.cells); i++ {
 		combat.cells[i] = logic.Piece{}
 	}
 	// Signal combat preparation is over.
-	combat.commandQueue <- notification
+	combat.commandQueue <- cbt.Wrap(cbt.Start{
+		Target: combat.target,
+		Pieces: combat.pieces,
+		Cells:  combat.cells,
+	})
 }

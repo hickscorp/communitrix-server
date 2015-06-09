@@ -63,7 +63,7 @@ func (hub *Hub) Run() {
 				combats := make([]string, 0)
 				if len(hub.combats) == 0 {
 					log.Warning("This server has no combats, creating a default one.")
-					combat := NewCombat(2, 4)
+					combat := NewCombat(1, 1)
 					go combat.Run()
 					hub.combats[combat.UUID()] = combat
 				}
