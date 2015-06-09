@@ -170,13 +170,13 @@ func (combat *Combat) Prepare() {
 	playerCount := len(combat.players)
 	// Prepare notification.
 	notification := cbt.Start{
-		Target: gen.NewCellularAutomata(&logic.Vector{30, 30, 30}).Run(0.5),
+		Target: gen.NewCellularAutomata(&logic.Vector{3, 4, 2}).Run(0.6),
 		Pieces: make([]*logic.Piece, playerCount),
 		Cells:  make([]*logic.Piece, playerCount),
 	}
 	for i := 0; i < playerCount; i++ {
-		notification.Pieces[i] = logic.NewPiece()
-		notification.Cells[i] = logic.NewPiece()
+		notification.Pieces[i] = logic.NewPiece(&logic.Vector{0, 0, 0}, 0)
+		notification.Cells[i] = logic.NewPiece(&logic.Vector{0, 0, 0}, 0)
 	}
 	// Signal combat preparation is over.
 	combat.commandQueue <- cbt.Wrap(notification)

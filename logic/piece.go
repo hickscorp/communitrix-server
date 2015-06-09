@@ -5,11 +5,14 @@ type Piece struct {
 	Content []*Vector `json:"content"`
 }
 
-func NewPiece() *Piece {
-	return &Piece{Size: &Vector{0, 0, 0}, Content: make([]*Vector, 0)}
+func NewPiece(size *Vector, capacity int) *Piece {
+	return &Piece{
+		Size:    size,
+		Content: make([]*Vector, 0, capacity),
+	}
 }
 
-// Allow to deep-copy a piece.
+// Copy allows to deep-copy a piece.
 func (this Piece) Copy() *Piece {
 	ret := Piece{Size: this.Size}
 	ret.Content = make([]*Vector, len(this.Content))

@@ -1,7 +1,6 @@
 package gen
 
 import (
-	"github.com/op/go-logging"
 	"gogs.pierreqr.fr/doodloo/communitrix/array"
 	"gogs.pierreqr.fr/doodloo/communitrix/logic"
 	"gogs.pierreqr.fr/doodloo/communitrix/util"
@@ -16,8 +15,6 @@ var (
 		&logic.Vector{0, -1, 0}, &logic.Vector{0, +1, 0}, // Top / Bottom.
 		&logic.Vector{0, 0, -1}, &logic.Vector{0, 0, +1}, // Forward / Backward
 	}
-	log    = logging.MustGetLogger("communitrix")
-	format = logging.MustStringFormatter("%{color}%{level:.1s} %{shortfunc}%{color:reset} %{message}")
 )
 
 type CellularAutomata struct {
@@ -45,10 +42,10 @@ func (this *CellularAutomata) Run(density float64) *logic.Piece {
 	this.result = array.NewContentArray(this.size, nil)
 
 	// Set the first block inside the results array.
+	//this.fillCell(this.size.Copy().Half(), 1)
 	this.fillCell(this.size.Copy().Half(), 1)
-	this.fillCell(&logic.Vector{0, 0, 0}, 1)
 	// Keep track of the total number of cells we've added.
-	totalCellsAdded := 2
+	totalCellsAdded := 1
 
 	var cellsPerIteration, freeLocCount, probSum int
 	for {
@@ -61,25 +58,19 @@ func (this *CellularAutomata) Run(density float64) *logic.Piece {
 
 		// Prepare iteration.
 		freeLocCount, probSum = 0, 0
-		groups := map[int][]logic.Vector{}
+		groups := map[int][]*logic.Vector{}
 		// Look at every single array element.
-		var pro int
-		for x := 0; x < this.probabilities.Size.X; x++ {
-			for y := 0; y < this.probabilities.Size.Y; y++ {
-				for z := 0; z < this.probabilities.Size.Z; z++ {
-					pro = this.probabilities.Content[x][y][z]
-					if pro != 0 {
-						freeLocCount++
-						if locations, ok := groups[pro]; ok {
-							groups[pro] = append(locations, logic.Vector{x, y, z})
-						} else {
-							probSum += pro
-							groups[pro] = []logic.Vector{logic.Vector{x, y, z}}
-						}
-					}
+		this.probabilities.Each(func(at *logic.Vector, pro int) {
+			if pro != 0 {
+				freeLocCount++
+				if locations, ok := groups[pro]; ok {
+					groups[pro] = append(locations, at.Copy())
+				} else {
+					probSum += pro
+					groups[pro] = []*logic.Vector{at.Copy()}
 				}
 			}
-		}
+		})
 		// Build a dice array.
 		dice := make([]int, 0, probSum)
 		for pro := range groups {
@@ -91,22 +82,18 @@ func (this *CellularAutomata) Run(density float64) *logic.Piece {
 			pro := dice[rand.Intn(probSum)]
 			locations := groups[pro]
 			location := locations[rand.Intn(len(locations))]
-			if !this.fillCell(&location, 1) {
+			if !this.fillCell(location, 1) {
 				i--
 			}
 		}
 		// Whenever we reach the target size, stop.
 		totalCellsAdded += cellsPerIteration
-		log.Info("Generated %d/%d pieces, factor is now %f (%d per pass)", totalCellsAdded, targetSize, this.spreadingFactor, cellsPerIteration)
 		if totalCellsAdded >= targetSize {
 			break
 		}
 	}
-
-	piece := &logic.Piece{
-		Size:    this.size,
-		Content: make([]*logic.Vector, 0, this.size.Volume()),
-	}
+	// Generate the piece.
+	piece := logic.NewPiece(this.size, totalCellsAdded)
 	this.result.Each(func(at *logic.Vector, val int) {
 		if val != 0 {
 			piece.Content = append(piece.Content, at.Copy())
@@ -130,8 +117,4 @@ func (this *CellularAutomata) fillCell(at *logic.Vector, val int) bool {
 		}
 	}
 	return true
-}
-
-func (this *CellularAutomata) VectorTo1DCoords(v *logic.Vector) int {
-	return v.X + (v.Y * this.size.X) + (v.Z * this.size.X * this.size.Y)
 }
