@@ -193,7 +193,7 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	// Cache player count.
 	pc := len(this.players)
 	// Prepare data.
-	target, ok := gen.NewCellularAutomata(&logic.Vector{11, 11, 11}).Run(0.6)
+	target, ok := gen.NewCellularAutomata(&logic.Vector{3, 5, 7}).Run(0.4)
 	if !ok {
 		log.Warning("Something went wrong during target generation.")
 		return nil, false

@@ -47,7 +47,7 @@ func (this *Vector) Clone() *Vector {
 }
 
 func (this *Vector) Volume() int {
-	return this.X * this.Y * this.Z
+	return util.QuickIntRound(math.Abs(float64(this.X)) * math.Abs(float64(this.Y)) * math.Abs(float64(this.Z)))
 }
 func (this *Vector) Half() {
 	this.X, this.Y, this.Z = this.X/2, this.Y/2, this.Z/2

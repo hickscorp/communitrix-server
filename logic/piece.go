@@ -14,7 +14,7 @@ func NewPiece(size *Vector, capacity int) *Piece {
 
 // Copy allows to deep-copy a piece.
 func (this Piece) Clone() *Piece {
-	ret := Piece{Size: this.Size}
+	ret := Piece{Size: this.Size.Clone()}
 	ret.Content = make([]*Cell, len(this.Content))
 	for i, v := range this.Content {
 		ret.Content[i] = v.Clone()
@@ -32,7 +32,6 @@ func (this *Piece) Translate(t *Vector) {
 // Rotate applies a given rotation transformation to the current object. The current object is then returned for chaining.
 func (this *Piece) Rotate(q *Quaternion) {
 	this.Size.Rotate(q)
-	this.Size.Abs()
 	for _, v := range this.Content {
 		v.Rotate(q)
 	}

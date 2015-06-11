@@ -30,7 +30,7 @@ type CellularAutomata struct {
 func NewCellularAutomata(size *logic.Vector) *CellularAutomata {
 	return &CellularAutomata{
 		size:            size,
-		spreadingFactor: 0.4,
+		spreadingFactor: 0.1,
 	}
 }
 
