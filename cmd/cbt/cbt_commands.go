@@ -13,8 +13,8 @@ type RemovePlayer struct{ Player interface{} }
 type Prepare struct{}
 type Start struct {
 	Target *logic.Piece
-	Pieces []*logic.Piece
-	Cells  []*logic.Piece
+	Pieces logic.Pieces
+	Cells  logic.Pieces
 }
 
 type StartNewTurn struct{}

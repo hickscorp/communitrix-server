@@ -14,36 +14,49 @@ type Vector struct {
 }
 
 func (this *Vector) GetX() int  { return this.X }
-func (this *Vector) GetY() int  { return this.Z }
-func (this *Vector) GetZ() int  { return this.Y }
+func (this *Vector) GetY() int  { return this.Y }
+func (this *Vector) GetZ() int  { return this.Z }
 func (this *Vector) SetX(x int) { this.X = x }
 func (this *Vector) SetY(y int) { this.Y = y }
 func (this *Vector) SetZ(z int) { this.Z = z }
 
+// Instanciator based on an existing vector.
+func NewVectorFromVector(other *Vector) *Vector {
+	return &Vector{other.X, other.Y, other.Z}
+}
+
+// Updates values from another vector.
+func (this *Vector) FromVector(other *Vector) {
+	this.X, this.Y, this.Z = other.X, other.Y, other.Z
+}
+
+// Instanciator based on a list of integers.
 func NewVectorFromInts(x, y, z int) *Vector {
 	ret := Vector{}
 	ret.FromInts(x, y, z)
 	return &ret
 }
+
+// Updates values from a list of integers.
 func (this *Vector) FromInts(x, y, z int) {
 	this.X, this.Y, this.Z = x, y, z
 }
 
-// NewVectorFromMap instanciates a new object given a map.
+// Instanciator based on a map.
 func NewVectorFromMap(data util.MapHelper) *Vector {
 	ret := Vector{}
 	ret.FromMap(data)
 	return &ret
 }
 
-// FromMap replaces the contents of the current object's values by the ones in the given map. The current object is then returned for chaining.
+// Updates values from a map.
 func (this *Vector) FromMap(m util.MapHelper) {
 	this.X, this.Y, this.Z = m.Int("x"), m.Int("y"), m.Int("z")
 }
 
-// Allows to deep-copy a vector.
+// Clone allows to deep-copy a vector.
 func (this *Vector) Clone() *Vector {
-	return &Vector{this.X, this.Y, this.Z}
+	return NewVectorFromVector(this)
 }
 
 func (this *Vector) Volume() int {

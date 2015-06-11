@@ -11,12 +11,13 @@ type Cell struct {
 }
 
 func NewCellFromInts(x, y, z, v int) *Cell {
-	return (&Cell{}).FromInts(x, y, z, v)
+	ret := Cell{}
+	ret.FromInts(x, y, z, v)
+	return &ret
 }
 
-func (this *Cell) FromInts(x, y, z, v int) *Cell {
+func (this *Cell) FromInts(x, y, z, v int) {
 	this.X, this.Y, this.Z, this.Value = x, y, z, v
-	return this
 }
 
 // NewCellFromMap instanciates a new object given a map.

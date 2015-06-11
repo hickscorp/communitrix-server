@@ -7,6 +7,7 @@ type ContentArray struct {
 	Content [][][]int
 }
 
+// Instanciator.
 func NewContentArray(size *logic.Vector, filler ContentArrayFiller) *ContentArray {
 	if filler == nil {
 		filler = NewIntContentArrayFiller(0)
@@ -28,6 +29,11 @@ func NewContentArray(size *logic.Vector, filler ContentArrayFiller) *ContentArra
 	return &ret
 }
 
+// Clone allows to deep-copy an array.
+func (this ContentArray) Clone() *ContentArray {
+	return NewContentArray(this.Size, NewCopyContentArrayFiller(this))
+}
+
 // Each allows to perform a given function over each of this object's components. The current object is then returned for chaining.
 func (this *ContentArray) Each(do func(*logic.Vector, int)) {
 	at := logic.Vector{0, 0, 0}
@@ -38,8 +44,4 @@ func (this *ContentArray) Each(do func(*logic.Vector, int)) {
 			}
 		}
 	}
-}
-
-func (this ContentArray) Clone() *ContentArray {
-	return NewContentArray(this.Size, NewCopyContentArrayFiller(this))
 }

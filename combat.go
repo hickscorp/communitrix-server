@@ -34,8 +34,8 @@ type Combat struct {
 	players      map[string]i.Player // Maintains a list of known players.
 	commandQueue chan *cbt.Base      // The Combat command queue.
 	target       *logic.Piece        // The objective for all players.
-	cells        []*logic.Piece      // State of each player
-	pieces       []*logic.Piece      // The pieces all players are given.
+	cells        logic.Pieces        // State of each player
+	pieces       logic.Pieces        // The pieces all players are given.
 }
 
 func (this *Combat) UUID() string           { return this.uuid }
@@ -193,13 +193,15 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	// Cache player count.
 	pc := len(this.players)
 	// Prepare data.
-	target, ok := gen.NewCellularAutomata(&logic.Vector{3, 5, 7}).Run(0.4)
+	target, ok := gen.NewCellularAutomata(logic.NewVectorFromInts(25, 25, 25)).Run(0.4)
 	if !ok {
 		log.Warning("Something went wrong during target generation.")
 		return nil, false
 	}
+	log.Warning("Target will be of size %d.", target.Size)
+
 	log.Info("Finished generating target.")
-	pieces, ok := make([]*logic.Piece, pc), true
+	pieces, ok := gen.NewPieceSplitter().Run(target, len(target.Content)/5)
 	if !ok {
 		log.Warning("Something went wrong during pieces generation.")
 		return nil, false
@@ -211,8 +213,7 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	}
 	// Temporary fix.
 	for i := 0; i < pc; i++ {
-		pieces[i] = logic.NewPiece(&logic.Vector{0, 0, 0}, 0)
-		cells[i] = logic.NewPiece(&logic.Vector{0, 0, 0}, 0)
+		cells[i] = logic.NewPiece(logic.NewVectorFromInts(0, 0, 0), 0)
 	}
 	// Signal combat preparation is over.
 	return &cbt.Start{

@@ -7,12 +7,11 @@ type Localizable interface {
 	SetX(int)
 	SetY(int)
 	SetZ(int)
-
-	Volume() int
-	Half()
-	Inv()
-	Abs()
-	SameAs(other Localizable) bool
-	Translate(offset Localizable)
-	Rotate(q interface{})
+	Volume() int                   // X * Y * Z
+	Half()                         // X / 2, Y / 2, Z / 2
+	Inv()                          // -X, -Y, -Z
+	Abs()                          // SQRT(X*X), SQRT(Y*Y), SQRT(Z*Z)
+	SameAs(other Localizable) bool // X==o.X && Y==o.Y && Z==o.Z
+	Translate(offset Localizable)  // X+o.X, Y+o.Y, Z+o.Z
+	Rotate(q interface{})          // Applies Q
 }

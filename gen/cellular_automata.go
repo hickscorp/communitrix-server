@@ -1,7 +1,6 @@
 package gen
 
 import (
-	"github.com/op/go-logging"
 	"gogs.pierreqr.fr/doodloo/communitrix/array"
 	"gogs.pierreqr.fr/doodloo/communitrix/logic"
 	"gogs.pierreqr.fr/doodloo/communitrix/util"
@@ -16,8 +15,6 @@ var (
 		&logic.Vector{0, -1, 0}, &logic.Vector{0, +1, 0}, // Top / Bottom.
 		&logic.Vector{0, 0, -1}, &logic.Vector{0, 0, +1}, // Forward / Backward
 	}
-	// Logging system.
-	log = logging.MustGetLogger("communitrix")
 )
 
 type CellularAutomata struct {
@@ -29,7 +26,7 @@ type CellularAutomata struct {
 
 func NewCellularAutomata(size *logic.Vector) *CellularAutomata {
 	return &CellularAutomata{
-		size:            size,
+		size:            size.Clone(),
 		spreadingFactor: 0.1,
 	}
 }
@@ -37,7 +34,7 @@ func NewCellularAutomata(size *logic.Vector) *CellularAutomata {
 // Run creates the unit.
 func (this *CellularAutomata) Run(density float64) (*logic.Piece, bool) {
 	// Normalize inputs.
-	if density < 0.0 || density > 1.0 || this.size.X&1 == 0 || this.size.Y&1 == 0 || this.size.Z&1 == 0 {
+	if density < 0.0 || density > 1.0 || this.size.X <= 0 || this.size.X&1 == 0 || this.size.Y <= 0 || this.size.Y&1 == 0 || this.size.Z <= 0 || this.size.Z&1 == 0 {
 		return nil, false
 	}
 	// Prepare the total number of blocks to be created.
@@ -95,7 +92,7 @@ func (this *CellularAutomata) Run(density float64) (*logic.Piece, bool) {
 			pro := dice[rand.Intn(probSum)]
 			locations := groups[pro]
 			location := locations[rand.Intn(len(locations))]
-			if !this.fillCell(location, iteration) {
+			if !this.fillCell(location, 1) {
 				i--
 			}
 		}
