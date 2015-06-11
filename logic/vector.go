@@ -1,6 +1,10 @@
 package logic
 
-import "gogs.pierreqr.fr/doodloo/communitrix/util"
+import (
+	"gogs.pierreqr.fr/doodloo/communitrix/i"
+	"gogs.pierreqr.fr/doodloo/communitrix/util"
+	"math"
+)
 
 // Vector represents a point inside a integer coordinate system space.
 type Vector struct {
@@ -9,59 +13,70 @@ type Vector struct {
 	Z int `json:"z"`
 }
 
+func (this *Vector) GetX() int  { return this.X }
+func (this *Vector) GetY() int  { return this.Z }
+func (this *Vector) GetZ() int  { return this.Y }
+func (this *Vector) SetX(x int) { this.X = x }
+func (this *Vector) SetY(y int) { this.Y = y }
+func (this *Vector) SetZ(z int) { this.Z = z }
+
+func NewVectorFromInts(x, y, z int) *Vector {
+	ret := Vector{}
+	ret.FromInts(x, y, z)
+	return &ret
+}
+func (this *Vector) FromInts(x, y, z int) {
+	this.X, this.Y, this.Z = x, y, z
+}
+
 // NewVectorFromMap instanciates a new object given a map.
 func NewVectorFromMap(data util.MapHelper) *Vector {
-	return (&Vector{}).FromMap(data)
+	ret := Vector{}
+	ret.FromMap(data)
+	return &ret
 }
 
 // FromMap replaces the contents of the current object's values by the ones in the given map. The current object is then returned for chaining.
-func (this *Vector) FromMap(m util.MapHelper) *Vector {
+func (this *Vector) FromMap(m util.MapHelper) {
 	this.X, this.Y, this.Z = m.Int("x"), m.Int("y"), m.Int("z")
-	return this
-}
-
-func (this *Vector) FromInts(x, y, z int) *Vector {
-	this.X, this.Y, this.Z = x, y, z
-	return this
 }
 
 // Allows to deep-copy a vector.
-func (this *Vector) Copy() *Vector {
+func (this *Vector) Clone() *Vector {
 	return &Vector{this.X, this.Y, this.Z}
 }
-func (this *Vector) CopyTo(v *Vector) *Vector {
-	v.X, v.Y, v.Z = this.X, this.Y, this.Z
-	return v
-}
 
-func (this *Vector) Half() *Vector {
-	this.X, this.Y, this.Z = this.X/2, this.Y/2, this.Z/2
-	return this
-}
 func (this *Vector) Volume() int {
 	return this.X * this.Y * this.Z
 }
+func (this *Vector) Half() {
+	this.X, this.Y, this.Z = this.X/2, this.Y/2, this.Z/2
+}
+func (this *Vector) Inv() {
+	this.X, this.Y, this.Z = -this.X, -this.Y, -this.Z
+}
+func (this *Vector) Abs() {
+	this.X, this.Y, this.Z = util.QuickIntRound(math.Abs(float64(this.X))), util.QuickIntRound(math.Abs(float64(this.Y))), util.QuickIntRound(math.Abs(float64(this.Z)))
+}
 
 // SameAs checks wether two vectors are holding identical values.
-func (this *Vector) SameAs(v *Vector) bool {
-	return this.X == v.X && this.Y == v.Y && this.Z == v.Z
+func (this *Vector) SameAs(other i.Localizable) bool {
+	return this.X == other.GetX() && this.Y == other.GetY() && this.Z == other.GetZ()
 }
 
 // Translate applies a translation transformation to the current object. The current object is then returned for chaining.
-func (this *Vector) Translate(t *Vector) *Vector {
-	this.X += t.X
-	this.Y += t.Y
-	this.Z += t.Z
-	return this
+func (this *Vector) Translate(t i.Localizable) {
+	this.X += t.GetX()
+	this.Y += t.GetY()
+	this.Z += t.GetZ()
 }
 
 // Rotate applies a rotation transformation to the current object. The current object is then returned for chaining.
-func (this *Vector) Rotate(q *Quaternion) *Vector {
+func (this *Vector) Rotate(iq interface{}) {
+	q := iq.(*Quaternion)
 	px, py, pz := float64(this.X), float64(this.Y), float64(this.Z)
 	x, y, z, w := q.X, q.Y, q.Z, q.W
-	this.X, this.Y, this.Z =
-		util.QuickIntRound((w*w*px)+(2*y*w*pz)-(2*z*w*py)+(x*x*px)+(2*y*x*py)+(2*z*x*pz)-(z*z*px)-(y*y*px)),
-		util.QuickIntRound((2*x*y*px)+(y*y*py)+(2*z*y*pz)+(2*w*z*px)-(z*z*py)+(w*w*py)-(2*x*w*pz)-(x*x*py)),
-		util.QuickIntRound((2*x*z*px)+(2*y*z*py)+(z*z*pz)-(2*w*y*px)-(y*y*pz)+(2*w*x*py)-(x*x*pz)+(w*w*pz))
-	return this
+	this.X = util.QuickIntRound((w * w * px) + (2 * y * w * pz) - (2 * z * w * py) + (x * x * px) + (2 * y * x * py) + (2 * z * x * pz) - (z * z * px) - (y * y * px))
+	this.Y = util.QuickIntRound((2 * x * y * px) + (y * y * py) + (2 * z * y * pz) + (2 * w * z * px) - (z * z * py) + (w * w * py) - (2 * x * w * pz) - (x * x * py))
+	this.Z = util.QuickIntRound((2 * x * z * px) + (2 * y * z * py) + (z * z * pz) - (2 * w * y * px) - (y * y * pz) + (2 * w * x * py) - (x * x * pz) + (w * w * pz))
 }

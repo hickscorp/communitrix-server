@@ -33,3 +33,6 @@ type CombatPlayTurn struct {
 	Rotation    interface{}
 	Translation interface{}
 }
+type CombatEnd struct {
+	UUID string
+}

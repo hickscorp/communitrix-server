@@ -1,13 +1,13 @@
 package tx
 
 import (
-	"gogs.pierreqr.fr/doodloo/communitrix/logic"
+	//"gogs.pierreqr.fr/doodloo/communitrix/logic"
 	"gogs.pierreqr.fr/doodloo/communitrix/util"
 	"reflect"
 )
 
-func Wrap(sub interface{}) Base {
-	return Base{reflect.TypeOf(sub).Name(), sub}
+func Wrap(sub interface{}) *Base {
+	return &Base{reflect.TypeOf(sub).Name(), sub}
 }
 
 type Base struct {
@@ -39,14 +39,14 @@ type CombatPlayerLeft struct {
 	UUID string `json:"uuid"`
 }
 type CombatStart struct {
-	UUID   string         `json:"uuid"` // The combat unique identifier on the server.
-	Target *logic.Piece   `json:"target"`
-	Cells  []*logic.Piece `json:"cells"`
-	Pieces []*logic.Piece `json:"pieces"`
+	UUID   string      `json:"uuid"` // The combat unique identifier on the server.
+	Target interface{} `json:"target"`
+	Cells  interface{} `json:"cells"`
+	Pieces interface{} `json:"pieces"`
 }
 type CombatNewTurn struct{}
 type CombatPlayerTurn struct {
-	PlayerUUID string       `json:"playerUUID"`
-	Piece      *logic.Piece `json:"piece"`
+	PlayerUUID string      `json:"playerUUID"`
+	Piece      interface{} `json:"piece"`
 }
 type CombatEnd struct{}

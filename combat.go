@@ -27,157 +27,197 @@ func NextCombatUUID() int64 {
 type Combat struct {
 	mutex        sync.Mutex          // The lock for this combat.
 	uuid         string              // The combat unique identifier on the server.
+	preparing    bool                // Wether this combat is in generation phase.
 	started      bool                // Wether this combat has started or not.
 	minPlayers   int                 // The minimum number of players that can join.
 	maxPlayers   int                 // The maximum number of players that can join.
 	players      map[string]i.Player // Maintains a list of known players.
-	commandQueue chan interface{}    // The Combat command queue.
+	commandQueue chan *cbt.Base      // The Combat command queue.
 	target       *logic.Piece        // The objective for all players.
 	cells        []*logic.Piece      // State of each player
 	pieces       []*logic.Piece      // The pieces all players are given.
 }
 
-func (combat *Combat) UUID() string                     { return combat.uuid }
-func (combat *Combat) CommandQueue() chan<- interface{} { return combat.commandQueue }
+func (this *Combat) UUID() string           { return this.uuid }
+func (this *Combat) Notify(cmd interface{}) { this.commandQueue <- cmd.(*cbt.Base) }
 
 func NewCombat(minPlayers int, maxPlayers int) *Combat {
 	return &Combat{
 		mutex:        sync.Mutex{},
 		uuid:         fmt.Sprintf("CBT%d", NextCombatUUID()),
+		preparing:    false,
 		started:      false,
 		minPlayers:   minPlayers,
 		maxPlayers:   maxPlayers,
 		players:      make(map[string]i.Player),
-		commandQueue: make(chan interface{}, *config.HubCommandBufferSize),
+		commandQueue: make(chan *cbt.Base, *config.HubCommandBufferSize),
 	}
 }
 
-func (combat *Combat) AsSendable() util.MapHelper {
+func (this *Combat) AsSendable() util.MapHelper {
 	return util.MapHelper{
-		"uuid":       combat.uuid,
-		"minPlayers": combat.minPlayers,
-		"maxPlayers": combat.maxPlayers,
-		"players":    combat.sendablePlayers(),
+		"uuid":       this.uuid,
+		"minPlayers": this.minPlayers,
+		"maxPlayers": this.maxPlayers,
+		"players":    this.sendablePlayers(),
 	}
 }
-func (combat *Combat) sendablePlayers() []util.MapHelper {
-	players := make([]util.MapHelper, len(combat.players))
+func (this *Combat) sendablePlayers() []util.MapHelper {
+	players := make([]util.MapHelper, len(this.players))
 	idx := 0
-	for _, player := range combat.players {
+	for _, player := range this.players {
 		players[idx] = player.AsSendable()
 		idx++
 	}
 	return players
 }
-
-func (combat *Combat) WhileLocked(do func()) {
-	combat.mutex.Lock()
-	do()
-	combat.mutex.Unlock()
+func (this *Combat) notifyPlayers(cmd *tx.Base) {
+	for _, player := range this.players {
+		player.Notify(cmd)
+	}
 }
 
-func (combat *Combat) Run() {
-	log.Info("Starting combat %s loop.", combat.uuid)
+func (this *Combat) WhileLocked(do func()) {
+	this.mutex.Lock()
+	do()
+	this.mutex.Unlock()
+}
+
+func (this *Combat) Run() {
 	// Loop.
 	for {
 		// Wait for any event to occur.
 		select {
-		case iCmd := <-combat.commandQueue:
-			switch cmd := iCmd.(*cbt.Base).Command.(type) {
+		case cmd := <-this.commandQueue:
+			switch sub := cmd.Command.(type) {
 
 			// Register a new player.
 			case cbt.AddPlayer:
-				if combat.started {
-					cmd.Player.CommandQueue() <- tx.Wrap(tx.Error{
+				player := sub.Player.(i.Player)
+				if this.preparing || this.started {
+					player.Notify(tx.Wrap(tx.Error{
 						Code:   422,
 						Reason: "This combat has already started, you cannot join it anymore.",
-					})
+					}))
 					continue
 				}
-				if _, ok := combat.players[cmd.Player.UUID()]; !ok {
+				if _, ok := this.players[player.UUID()]; !ok {
 					// Notify all other players.
-					notification := tx.Wrap(tx.CombatPlayerJoined{Player: cmd.Player.AsSendable()})
-					for _, otherPlayer := range combat.players {
-						otherPlayer.CommandQueue() <- notification
-					}
+					this.notifyPlayers(
+						tx.Wrap(tx.CombatPlayerJoined{
+							Player: player.AsSendable(),
+						}))
 					// Add the originator to our list of players.
-					combat.players[cmd.Player.UUID()] = cmd.Player
+					this.players[player.UUID()] = player
 					// The originator can join.
-					cmd.Player.CommandQueue() <- tx.Wrap(tx.CombatJoin{Combat: combat.AsSendable()})
+					player.Notify(tx.Wrap(
+						tx.CombatJoin{
+							Combat: this.AsSendable(),
+						}))
 				}
 				// We reached the correct number of players, start the combat!
-				pCount := len(combat.players)
-				if pCount == combat.maxPlayers { // It's time to start the combat!
-					combat.commandQueue <- cbt.Wrap(cbt.Prepare{})
-				} else if pCount > combat.maxPlayers { // Impossible case. Just put some logging to make sure.
-					log.Error("BUG: There %d / %d players in combat %s.", pCount, combat.maxPlayers, combat.uuid)
+				pCount := len(this.players)
+				if pCount == this.maxPlayers { // It's time to start the combat!
+					this.commandQueue <- cbt.Wrap(cbt.Prepare{})
 				}
 
 			// Unregister a player.
 			case cbt.RemovePlayer:
-				delete(combat.players, cmd.Player.UUID())
-				// Notify all other players.
-				notification := tx.Wrap(tx.CombatPlayerLeft{UUID: cmd.Player.UUID()})
-				for _, otherPlayer := range combat.players {
-					otherPlayer.CommandQueue() <- notification
+				player := sub.Player.(i.Player)
+				delete(this.players, player.UUID())
+				// No one left?
+				if len(this.players) == 0 {
+					log.Warning("There is no one left in combat %s, exiting.", this.uuid)
+					return
 				}
+				// Notify all other players.
+				this.notifyPlayers(tx.Wrap(tx.CombatPlayerLeft{UUID: player.UUID()}))
 
 			// Should prepare the combat now.
 			case cbt.Prepare:
-				if !combat.started {
-					combat.started = true
-					go combat.Prepare()
+				if !this.preparing && !this.started {
+					this.preparing = true
+					go func(combat *Combat) {
+						notification, ok := combat.Prepare()
+						if !ok {
+							combat.notifyPlayers(
+								tx.Wrap(
+									tx.Error{
+										Code:   500,
+										Reason: "Something went wrong while preparing the combat. Please try again.",
+									}))
+						} else {
+							combat.commandQueue <- cbt.Wrap(*notification)
+						}
+					}(this)
 				}
 			// Once the combat is ready... Start it.
 			case cbt.Start:
-				combat.target, combat.pieces, combat.cells = cmd.Target, cmd.Pieces, cmd.Cells
-				notification := tx.Wrap(tx.CombatStart{
-					UUID:   combat.uuid,
-					Target: combat.target,
-					Pieces: combat.pieces,
-					Cells:  combat.cells,
-				})
-				for _, otherPlayer := range combat.players {
-					otherPlayer.CommandQueue() <- notification
-				}
+				this.preparing, this.started = false, true
+				this.target, this.pieces, this.cells = sub.Target, sub.Pieces, sub.Cells
+				this.notifyPlayers(
+					tx.Wrap(tx.CombatStart{
+						UUID:   this.uuid,
+						Target: this.target,
+						Pieces: this.pieces,
+						Cells:  this.cells,
+					}))
+
 			// A new turn has started.
 			case cbt.StartNewTurn:
 
+			// A player is playing his turn.
 			case cbt.PlayTurn:
-				if !combat.started {
-					log.Warning("Client %s is sending turns while the combat hasn't started.", cmd.Player.UUID())
-					cmd.Player.CommandQueue() <- tx.Wrap(tx.Error{
+				player := sub.Player.(i.Player)
+				if !this.started {
+					log.Warning("Client %s is sending turns while the combat hasn't started.", player.UUID())
+					player.Notify(tx.Wrap(tx.Error{
 						Code:   422,
 						Reason: "You cannot play a turn while the combat has not started.",
-					})
+					}))
 					continue
 				}
-				newPiece := combat.target.Copy().Rotate(cmd.Rotation)
-				notification := tx.Wrap(tx.CombatPlayerTurn{
-					PlayerUUID: cmd.Player.UUID(),
-					Piece:      newPiece,
-				})
-				for _, player := range combat.players {
-					player.CommandQueue() <- notification
-				}
+				piece := this.target.Clone()
+				piece.Rotate(sub.Rotation)
+				this.notifyPlayers(
+					tx.Wrap(tx.CombatPlayerTurn{
+						PlayerUUID: player.UUID(),
+						Piece:      piece,
+					}))
 			}
 		}
 	}
 }
 
-func (combat *Combat) Prepare() {
+func (this *Combat) Prepare() (*cbt.Start, bool) {
 	// Cache player count.
-	playerCount := len(combat.players)
-	// Prepare notification.
-	notification := cbt.Start{
-		Target: gen.NewCellularAutomata(&logic.Vector{3, 4, 2}).Run(0.6),
-		Pieces: make([]*logic.Piece, playerCount),
-		Cells:  make([]*logic.Piece, playerCount),
+	pc := len(this.players)
+	// Prepare data.
+	target, ok := gen.NewCellularAutomata(&logic.Vector{11, 11, 11}).Run(0.6)
+	if !ok {
+		log.Warning("Something went wrong during target generation.")
+		return nil, false
 	}
-	for i := 0; i < playerCount; i++ {
-		notification.Pieces[i] = logic.NewPiece(&logic.Vector{0, 0, 0}, 0)
-		notification.Cells[i] = logic.NewPiece(&logic.Vector{0, 0, 0}, 0)
+	log.Info("Finished generating target.")
+	pieces, ok := make([]*logic.Piece, pc), true
+	if !ok {
+		log.Warning("Something went wrong during pieces generation.")
+		return nil, false
+	}
+	cells, ok := make([]*logic.Piece, pc), true
+	if !ok {
+		log.Warning("Something went wrong during cells generation.")
+		return nil, false
+	}
+	// Temporary fix.
+	for i := 0; i < pc; i++ {
+		pieces[i] = logic.NewPiece(&logic.Vector{0, 0, 0}, 0)
+		cells[i] = logic.NewPiece(&logic.Vector{0, 0, 0}, 0)
 	}
 	// Signal combat preparation is over.
-	combat.commandQueue <- cbt.Wrap(notification)
+	return &cbt.Start{
+		Target: target,
+		Pieces: pieces,
+		Cells:  cells,
+	}, true
 }

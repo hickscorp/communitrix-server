@@ -1,39 +1,45 @@
 package logic
 
 type Piece struct {
-	Size    *Vector   `json:"size"`
-	Content []*Vector `json:"content"`
+	Size    *Vector `json:"size"`
+	Content []*Cell `json:"content"`
 }
 
 func NewPiece(size *Vector, capacity int) *Piece {
 	return &Piece{
 		Size:    size,
-		Content: make([]*Vector, 0, capacity),
+		Content: make([]*Cell, 0, capacity),
 	}
 }
 
 // Copy allows to deep-copy a piece.
-func (this Piece) Copy() *Piece {
+func (this Piece) Clone() *Piece {
 	ret := Piece{Size: this.Size}
-	ret.Content = make([]*Vector, len(this.Content))
+	ret.Content = make([]*Cell, len(this.Content))
 	for i, v := range this.Content {
-		ret.Content[i] = v.Copy()
+		ret.Content[i] = v.Clone()
 	}
 	return &ret
 }
 
 // Translate applies a given translation transformation to the current object. The current object is then returned for chaining.
-func (this *Piece) Translate(t *Vector) *Piece {
+func (this *Piece) Translate(t *Vector) {
 	for _, v := range this.Content {
 		v.Translate(t)
 	}
-	return this
 }
 
 // Rotate applies a given rotation transformation to the current object. The current object is then returned for chaining.
-func (this *Piece) Rotate(q *Quaternion) *Piece {
+func (this *Piece) Rotate(q *Quaternion) {
+	this.Size.Rotate(q)
+	this.Size.Abs()
 	for _, v := range this.Content {
 		v.Rotate(q)
 	}
-	return this
+}
+
+func (this *Piece) Each(do func(*Cell)) {
+	for _, v := range this.Content {
+		do(v)
+	}
 }
