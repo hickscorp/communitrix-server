@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"github.com/op/go-logging"
 	"gogs.pierreqr.fr/doodloo/communitrix/array"
 	"gogs.pierreqr.fr/doodloo/communitrix/logic"
 	"gogs.pierreqr.fr/doodloo/communitrix/util"
@@ -15,6 +16,7 @@ var (
 		&logic.Vector{0, -1, 0}, &logic.Vector{0, +1, 0}, // Top / Bottom.
 		&logic.Vector{0, 0, -1}, &logic.Vector{0, 0, +1}, // Forward / Backward
 	}
+	log = logging.MustGetLogger("communitrix")
 )
 
 type CellularAutomata struct {
@@ -46,16 +48,13 @@ func (this *CellularAutomata) Run(density float64) (*logic.Piece, bool) {
 	center := this.size.Clone()
 	center.Half()
 
-	// Prepare iteration counter.
-	iteration := 1
 	// Set the first block inside the results array.
-	this.fillCell(center, iteration)
+	this.fillCell(center, -1)
 	// Keep track of the total number of cells we've added.
 	totalCellsAdded := 1
 
 	var cellsPerIteration, freeLocCount, probSum int
 	for {
-		iteration++
 		// Compute the target cells to generate during this iteration.
 		cellsPerIteration = util.QuickIntRound(math.Max(1, math.Floor(float64(totalCellsAdded)*this.spreadingFactor)))
 		if cellsPerIteration > 100 {
@@ -92,7 +91,7 @@ func (this *CellularAutomata) Run(density float64) (*logic.Piece, bool) {
 			pro := dice[rand.Intn(probSum)]
 			locations := groups[pro]
 			location := locations[rand.Intn(len(locations))]
-			if !this.fillCell(location, 1) {
+			if !this.fillCell(location, -1) {
 				i--
 			}
 		}
@@ -103,14 +102,17 @@ func (this *CellularAutomata) Run(density float64) (*logic.Piece, bool) {
 		}
 	}
 
+	// Split into pieces.
+	this.split(5)
+
 	// Generate the piece.
 	piece := logic.NewPiece(this.size, totalCellsAdded-1)
-	off := center.Clone()
-	off.Inv()
+	//off := center.Clone()
+	//off.Inv()
 	this.result.Each(func(at *logic.Vector, val int) {
 		if val != 0 {
 			cell := logic.NewCellFromInts(at.X, at.Y, at.Z, val)
-			cell.Translate(off)
+			//cell.Translate(off)
 			piece.Content = append(piece.Content, cell)
 		}
 	})
@@ -134,4 +136,7 @@ func (this *CellularAutomata) fillCell(at *logic.Vector, val int) bool {
 		}
 	}
 	return true
+}
+
+func (this *CellularAutomata) split(count int) {
 }

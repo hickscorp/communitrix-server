@@ -76,6 +76,14 @@ func (this *Vector) Abs() {
 func (this *Vector) SameAs(other i.Localizable) bool {
 	return this.X == other.GetX() && this.Y == other.GetY() && this.Z == other.GetZ()
 }
+func (this *Vector) SameAsAny(others []*Vector) bool {
+	for _, elem := range others {
+		if this.SameAs(elem) {
+			return true
+		}
+	}
+	return false
+}
 
 // Translate applies a translation transformation to the current object. The current object is then returned for chaining.
 func (this *Vector) Translate(t i.Localizable) {

@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"runtime"
 )
 
 var (
@@ -21,6 +22,8 @@ func init() {
 }
 
 func main() {
+	runtime.GOMAXPROCS(8)
+
 	// Allows to parse a single parameter, the port.
 	config.Port = flag.Int("port", 9003, "Port to serve on.")
 	config.HubCommandBufferSize = flag.Int("hubCommandBuffer", 2048, "Size of the hub command queue buffer.")

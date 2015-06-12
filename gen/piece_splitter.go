@@ -1,13 +1,10 @@
 package gen
 
 import (
-	"github.com/op/go-logging"
 	"gogs.pierreqr.fr/doodloo/communitrix/logic"
 	"gogs.pierreqr.fr/doodloo/communitrix/util"
 	"math"
 )
-
-var log = logging.MustGetLogger("communitrix")
 
 type PieceSplitter struct {
 }

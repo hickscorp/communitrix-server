@@ -1,10 +1,25 @@
 package array
 
-import "gogs.pierreqr.fr/doodloo/communitrix/logic"
+import (
+	"gogs.pierreqr.fr/doodloo/communitrix/logic"
+)
 
 type ContentArray struct {
 	Size    *logic.Vector
 	Content [][][]int
+}
+
+// Define our array filling template method.
+type ContentArrayFiller func(at *logic.Vector) int
+
+// NewIntContentArrayFiller creates a new routine which will fill an array with a constant value.
+func NewIntContentArrayFiller(val int) ContentArrayFiller {
+	return func(*logic.Vector) int { return val }
+}
+
+// NewCopyContentArrayFiller will copy values from a given tri-ensional array.
+func NewCopyContentArrayFiller(other *ContentArray) ContentArrayFiller {
+	return func(at *logic.Vector) int { return other.Content[at.X][at.Y][at.Z] }
 }
 
 // Instanciator.
@@ -28,10 +43,25 @@ func NewContentArray(size *logic.Vector, filler ContentArrayFiller) *ContentArra
 	}
 	return &ret
 }
+func NewContentArrayFromPiece(piece *logic.Piece) *ContentArray {
+	ret := NewContentArray(piece.Size, nil)
+	for _, cell := range piece.Content {
+		ret.Content[cell.X][cell.Y][cell.Z] = cell.Value
+	}
+	return ret
+}
 
 // Clone allows to deep-copy an array.
-func (this ContentArray) Clone() *ContentArray {
+func (this *ContentArray) Clone() *ContentArray {
 	return NewContentArray(this.Size, NewCopyContentArrayFiller(this))
+}
+
+func (this *ContentArray) ToPiece() *logic.Piece {
+	ret := logic.NewPiece(this.Size, 0)
+	this.Each(func(at *logic.Vector, val int) {
+		ret.Content = append(ret.Content, logic.NewCellFromInts(at.X, at.Y, at.Z, val))
+	})
+	return ret
 }
 
 // Each allows to perform a given function over each of this object's components. The current object is then returned for chaining.
