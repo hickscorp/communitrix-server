@@ -5,19 +5,10 @@ import (
 	"gogs.pierreqr.fr/doodloo/communitrix/array"
 	"gogs.pierreqr.fr/doodloo/communitrix/logic"
 	"gogs.pierreqr.fr/doodloo/communitrix/util"
-	"math"
 	"math/rand"
 )
 
-var (
-	// Our direction checks.
-	directions = []*logic.Vector{
-		&logic.Vector{-1, 0, 0}, &logic.Vector{+1, 0, 0}, // Left / Right.
-		&logic.Vector{0, -1, 0}, &logic.Vector{0, +1, 0}, // Top / Bottom.
-		&logic.Vector{0, 0, -1}, &logic.Vector{0, 0, +1}, // Forward / Backward
-	}
-	log = logging.MustGetLogger("communitrix")
-)
+var log = logging.MustGetLogger("communitrix")
 
 type CellularAutomata struct {
 	size            *logic.Vector
@@ -36,14 +27,16 @@ func NewCellularAutomata(size *logic.Vector) *CellularAutomata {
 // Run creates the unit.
 func (this *CellularAutomata) Run(density float64) (*logic.Piece, bool) {
 	// Normalize inputs.
-	if density < 0.0 || density > 1.0 || this.size.X <= 0 || this.size.X&1 == 0 || this.size.Y <= 0 || this.size.Y&1 == 0 || this.size.Z <= 0 || this.size.Z&1 == 0 {
+	if (density < 0.0 || density > 1.0) ||
+		(this.size.X <= 0 || this.size.X&1 == 0) ||
+		(this.size.Y <= 0 || this.size.Y&1 == 0) ||
+		(this.size.Z <= 0 || this.size.Z&1 == 0) {
 		return nil, false
 	}
 	// Prepare the total number of blocks to be created.
 	targetSize := int(float64(this.size.Volume()) * density)
 	// Prepare the result and probabilities array.
-	this.probabilities = array.NewContentArray(this.size, nil)
-	this.result = array.NewContentArray(this.size, nil)
+	this.probabilities, this.result = array.NewContentArray(this.size, nil), array.NewContentArray(this.size, nil)
 	// Cache the shape center.
 	center := this.size.Clone()
 	center.Half()
@@ -53,11 +46,12 @@ func (this *CellularAutomata) Run(density float64) (*logic.Piece, bool) {
 	// Keep track of the total number of cells we've added.
 	totalCellsAdded := 1
 
-	var cellsPerIteration, freeLocCount, probSum int
 	for {
 		// Compute the target cells to generate during this iteration.
-		cellsPerIteration = util.QuickIntRound(math.Max(1, math.Floor(float64(totalCellsAdded)*this.spreadingFactor)))
-		if cellsPerIteration > 100 {
+		cellsPerIteration := util.QuickIntRound(float64(totalCellsAdded) * this.spreadingFactor)
+		if cellsPerIteration == 0 {
+			cellsPerIteration = 1
+		} else if cellsPerIteration > 100 {
 			cellsPerIteration = 100
 		}
 		// Whenever we're reaching the target number of cells, cap it correctly.
@@ -66,17 +60,16 @@ func (this *CellularAutomata) Run(density float64) (*logic.Piece, bool) {
 		}
 
 		// Prepare iteration.
-		freeLocCount, probSum = 0, 0
-		groups := map[int][]*logic.Vector{}
+		probSum := 0
+		groups := map[int]logic.Vectors{}
 		// Look at every single array element.
 		this.probabilities.Each(func(at *logic.Vector, pro int) {
 			if pro != 0 {
-				freeLocCount++
 				if locations, ok := groups[pro]; ok {
 					groups[pro] = append(locations, at.Clone())
 				} else {
 					probSum += pro
-					groups[pro] = []*logic.Vector{at.Clone()}
+					groups[pro] = logic.Vectors{at.Clone()}
 				}
 			}
 		})
@@ -107,12 +100,9 @@ func (this *CellularAutomata) Run(density float64) (*logic.Piece, bool) {
 
 	// Generate the piece.
 	piece := logic.NewPiece(this.size, totalCellsAdded-1)
-	//off := center.Clone()
-	//off.Inv()
 	this.result.Each(func(at *logic.Vector, val int) {
 		if val != 0 {
 			cell := logic.NewCellFromInts(at.X, at.Y, at.Z, val)
-			//cell.Translate(off)
 			piece.Content = append(piece.Content, cell)
 		}
 	})

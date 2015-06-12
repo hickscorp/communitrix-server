@@ -6,6 +6,8 @@ import (
 	"math"
 )
 
+var NullVector = &Vector{0, 0, 0}
+
 // Vector represents a point inside a integer coordinate system space.
 type Vector struct {
 	X int `json:"x"`
@@ -76,7 +78,7 @@ func (this *Vector) Abs() {
 func (this *Vector) SameAs(other i.Localizable) bool {
 	return this.X == other.GetX() && this.Y == other.GetY() && this.Z == other.GetZ()
 }
-func (this *Vector) SameAsAny(others []*Vector) bool {
+func (this *Vector) SameAsAny(others Vectors) bool {
 	for _, elem := range others {
 		if this.SameAs(elem) {
 			return true

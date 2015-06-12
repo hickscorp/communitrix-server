@@ -206,7 +206,7 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 		log.Warning("Something went wrong during pieces generation.")
 		return nil, false
 	}
-	cells, ok := make([]*logic.Piece, playerCount), true
+	cells, ok := make(logic.Pieces, playerCount), true
 	if !ok {
 		log.Warning("Something went wrong during cells generation.")
 		return nil, false
@@ -215,6 +215,7 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	for i := 0; i < playerCount; i++ {
 		cells[i] = logic.NewPiece(logic.NewVectorFromInts(0, 0, 0), 0)
 	}
+	target.CleanUp()
 	// Signal combat preparation is over.
 	return &cbt.Start{
 		Target: target,
