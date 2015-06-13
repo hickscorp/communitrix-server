@@ -97,8 +97,7 @@ func (this *Recursor) Recurse(at *logic.Vector, depth int) {
 	dir := directions.Clone().Shuffle()
 	<-this.Advance
 	for _, d := range dir {
-		pos := at.Clone()
-		pos.Translate(d)
+		pos := at.Clone().Translate(d)
 		if pos.X >= 0 && pos.X < this.Arr.Size.X && pos.Y >= 0 && pos.Y < this.Arr.Size.Y && pos.Z >= 0 && pos.Z < this.Arr.Size.Z && this.Arr.Content[pos.X][pos.Y][pos.Z] == -1 {
 			this.Pieces++
 			this.Done <- this.TakeAt(pos)

@@ -177,12 +177,10 @@ func (this *Combat) Run() {
 					}))
 					continue
 				}
-				piece := this.target.Clone()
-				piece.Rotate(sub.Rotation)
 				this.notifyPlayers(
 					tx.Wrap(tx.CombatPlayerTurn{
 						PlayerUUID: player.UUID(),
-						Piece:      piece,
+						Piece:      this.target.Clone().Rotate(sub.Rotation),
 					}))
 			}
 		}

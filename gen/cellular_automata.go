@@ -113,8 +113,7 @@ func (this *CellularAutomata) fillCell(at *logic.Vector, val int) bool {
 	this.probabilities.Content[at.X][at.Y][at.Z] = 0
 	this.result.Content[at.X][at.Y][at.Z] = val
 	for _, d := range directions {
-		pos := at.Clone()
-		pos.Translate(d)
+		pos := at.Clone().Translate(d)
 		if pos.X >= 0 && pos.X < this.size.X && pos.Y >= 0 && pos.Y < this.size.Y && pos.Z >= 0 && pos.Z < this.size.Z {
 			// If there is already a probability there, increase it.
 			actual := this.probabilities.Content[pos.X][pos.Y][pos.Z]
