@@ -26,6 +26,7 @@ func NewHub() *Hub {
 
 // This handler is used from the main program as it's websocket upgrader.
 func (this *Hub) HandleClient(conn net.Conn) {
+	log.Debug("New client connected, spawning routine.")
 	// Whenever this method exits, close the connection.
 	defer conn.Close()
 	// Store the player information for this connection.
@@ -34,6 +35,7 @@ func (this *Hub) HandleClient(conn net.Conn) {
 
 // Run is the main loop for any Hub object.
 func (this *Hub) Run() {
+	log.Debug("Running new hub.")
 	// Loop.
 	for {
 		// Wait for any event to occur.
@@ -44,13 +46,13 @@ func (this *Hub) Run() {
 			switch sub := cmd.Command.(type) {
 			// Register a new player.
 			case rx.Register:
-				log.Info("Player %s registering as %s.", player.UUID(), sub.Username)
+				log.Debug("Player %s registering as %s.", player.UUID(), sub.Username)
 				player.SetUsername(sub.Username)
 				player.Notify(tx.Wrap(tx.Registered{sub.Username}))
 
 			// Unregisters a player.
 			case rx.Unregister:
-				log.Info("Player disconnected %s.", player.UUID())
+				log.Debug("Player disconnected %s.", player.UUID())
 				// Player was in a combat, remove him.
 				player.LeaveCombat()
 				player.Connection().Close()
@@ -59,7 +61,10 @@ func (this *Hub) Run() {
 			case rx.CombatList:
 				combats := make([]string, 0)
 				// TODO: Remove this from there!!!
-				if len(this.combats) == 0 {
+				for {
+					if len(this.combats) >= 2 {
+						break
+					}
 					log.Warning("This server has no combats, creating a default one.")
 					combat := NewCombat(2, 2)
 					this.combats[combat.UUID()] = combat

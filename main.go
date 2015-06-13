@@ -22,9 +22,6 @@ func init() {
 }
 
 func main() {
-	log.Warning("Booting on up to %d CPUs...", runtime.NumCPU())
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
 	// Allows to parse a single parameter, the port.
 	config.Port = flag.Int("port", 9003, "Port to serve on.")
 	config.HubCommandBufferSize = flag.Int("hubCommandBuffer", 2048, "Size of the hub command queue buffer.")
@@ -36,7 +33,11 @@ func main() {
 	config.LogLevel, _ = logging.LogLevel(*logLevel)
 	logging.SetLevel(config.LogLevel, "communitrix")
 
+	log.Debug("Booting on up to %d CPUs...", runtime.NumCPU())
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	// Initialize random generator.
+	log.Debug("Initializing with seed %d.", *config.Seed)
 	rand.Seed(*config.Seed)
 
 	// Prepare our listen address.
