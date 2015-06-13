@@ -19,3 +19,12 @@ func (this Vectors) Shuffle() Vectors {
 	}
 	return this
 }
+
+func (this Vectors) CollidesWith(v *Vector) bool {
+	for _, cell := range this {
+		if cell.CollidesWith(v) {
+			return true
+		}
+	}
+	return false
+}

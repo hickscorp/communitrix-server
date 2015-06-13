@@ -20,7 +20,7 @@ type Start struct {
 type StartNewTurn struct{}
 type PlayTurn struct {
 	Player      interface{}
-	UUID        string
+	PieceIndex  int
 	Rotation    *logic.Quaternion
 	Translation *logic.Vector
 }

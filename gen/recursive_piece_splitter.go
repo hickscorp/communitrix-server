@@ -36,7 +36,7 @@ func (this *RecursivePieceSplitter) Run(piece *logic.Piece, count int) (logic.Pi
 			rand.Intn(piece.Size.Y),
 			rand.Intn(piece.Size.Z),
 		)
-		if at.SameAsAny(ats) {
+		if ats.CollidesWith(at) {
 			i--
 			continue
 		}
@@ -64,7 +64,7 @@ func (this *RecursivePieceSplitter) Run(piece *logic.Piece, count int) (logic.Pi
 		recursor := recursors[idx]
 		if recursor != nil {
 			recursor.Advance <- true
-			if cell := <-recursor.Done; cell != nil {
+			if cell, ok := <-recursor.Done; ok {
 				ret[idx].AddCell(cell)
 			} else {
 				recursors[idx] = nil
@@ -105,7 +105,7 @@ func (this *Recursor) Recurse(at *logic.Vector, depth int) {
 		}
 	}
 	if depth == 0 {
-		this.Done <- nil
+		close(this.Done)
 	}
 }
 func (this *Recursor) TakeAt(at *logic.Vector) *logic.Cell {

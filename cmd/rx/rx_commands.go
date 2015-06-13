@@ -10,8 +10,8 @@ func Wrap(player i.Player, sub interface{}) *Base {
 }
 
 type Base struct {
-	Player  i.Player    // Pointer to a Player.
-	Command interface{} // Command.
+	Player  i.Player
+	Command interface{}
 }
 
 type Register struct {
@@ -26,12 +26,6 @@ type CombatCreate struct {
 }
 type CombatJoin struct {
 	UUID string
-}
-type CombatLeave struct{}
-type CombatPlayTurn struct {
-	UUID        string
-	Rotation    interface{}
-	Translation interface{}
 }
 type CombatEnd struct {
 	UUID string

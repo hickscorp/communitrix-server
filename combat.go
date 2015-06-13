@@ -25,32 +25,35 @@ func NextCombatUUID() int64 {
 
 // Player is the base struct representing connected entities.
 type Combat struct {
-	mutex        sync.Mutex          // The lock for this combat.
-	uuid         string              // The combat unique identifier on the server.
-	preparing    bool                // Wether this combat is in generation phase.
-	started      bool                // Wether this combat has started or not.
-	minPlayers   int                 // The minimum number of players that can join.
-	maxPlayers   int                 // The maximum number of players that can join.
-	players      map[string]i.Player // Maintains a list of known players.
-	commandQueue chan *cbt.Base      // The Combat command queue.
-	target       *logic.Piece        // The objective for all players.
-	cells        logic.Pieces        // State of each player
-	pieces       logic.Pieces        // The pieces all players are given.
+	uuid                   string              // The combat unique identifier on the server.
+	mutex                  sync.Mutex          // The lock for this combat.
+	players                map[string]i.Player // Maintains a list of known players.
+	commandQueue           chan *cbt.Base      // The Combat command queue.
+	minPlayers, maxPlayers int                 // The minimum / maximum number of players that can join.
+	state                  *state              // The current combat state.
+}
+
+// This represents the combat state at any point in time.
+type state struct {
+	turn          int                     // The current turn ID.
+	target        *logic.Piece            // The objective for all players.
+	cells         logic.Pieces            // State of each player
+	pieces        logic.Pieces            // The pieces all players are given.
+	playedPieces  map[string]map[int]bool // Associative player name -> Piece ID -> Boolean.
+	cellsRotation map[string]int          // The current cells belongings.
 }
 
 func (this *Combat) UUID() string           { return this.uuid }
 func (this *Combat) Notify(cmd interface{}) { this.commandQueue <- cmd.(*cbt.Base) }
 
-func NewCombat(minPlayers int, maxPlayers int) *Combat {
+func NewCombat(minPlayers, maxPlayers int) *Combat {
 	return &Combat{
-		mutex:        sync.Mutex{},
 		uuid:         fmt.Sprintf("CBT%d", NextCombatUUID()),
-		preparing:    false,
-		started:      false,
-		minPlayers:   minPlayers,
-		maxPlayers:   maxPlayers,
+		mutex:        sync.Mutex{},
 		players:      make(map[string]i.Player),
 		commandQueue: make(chan *cbt.Base, *config.HubCommandBufferSize),
+		minPlayers:   minPlayers, maxPlayers: maxPlayers,
+		state: nil,
 	}
 }
 
@@ -94,7 +97,7 @@ func (this *Combat) Run() {
 			// Register a new player.
 			case cbt.AddPlayer:
 				player := sub.Player.(i.Player)
-				if this.preparing || this.started {
+				if this.state != nil && this.state.turn > 0 {
 					player.Notify(tx.Wrap(tx.Error{
 						Code:   422,
 						Reason: "This combat has already started, you cannot join it anymore.",
@@ -135,8 +138,16 @@ func (this *Combat) Run() {
 
 			// Should prepare the combat now.
 			case cbt.Prepare:
-				if !this.preparing && !this.started {
-					this.preparing = true
+				if this.state == nil {
+					this.state = &state{
+						turn:          0,
+						target:        nil,
+						cells:         nil,
+						pieces:        nil,
+						playedPieces:  make(map[string]map[int]bool),
+						cellsRotation: make(map[string]int),
+					}
+
 					go func(combat *Combat) {
 						notification, ok := combat.Prepare()
 						if !ok {
@@ -153,14 +164,21 @@ func (this *Combat) Run() {
 				}
 			// Once the combat is ready... Start it.
 			case cbt.Start:
-				this.preparing, this.started = false, true
-				this.target, this.pieces, this.cells = sub.Target, sub.Pieces, sub.Cells
+				state := this.state
+				state.turn = 1
+				state.target, state.pieces, state.cells = sub.Target, sub.Pieces, sub.Cells
+				index := 0
+				for _, player := range this.players {
+					state.cellsRotation[player.UUID()] = index
+					state.playedPieces[player.UUID()] = make(map[int]bool)
+					index++
+				}
 				this.notifyPlayers(
 					tx.Wrap(tx.CombatStart{
 						UUID:   this.uuid,
-						Target: this.target,
-						Pieces: this.pieces,
-						Cells:  this.cells,
+						Target: state.target,
+						Pieces: state.pieces,
+						Cells:  state.cells,
 					}))
 
 			// A new turn has started.
@@ -169,7 +187,8 @@ func (this *Combat) Run() {
 			// A player is playing his turn.
 			case cbt.PlayTurn:
 				player := sub.Player.(i.Player)
-				if !this.started {
+				state := this.state
+				if state == nil || state.turn == 0 {
 					log.Warning("Client %s is sending turns while the combat hasn't started.", player.UUID())
 					player.Notify(tx.Wrap(tx.Error{
 						Code:   422,
@@ -177,11 +196,38 @@ func (this *Combat) Run() {
 					}))
 					continue
 				}
+				playedPieces := state.playedPieces[player.UUID()]
+				if playedPieces[sub.PieceIndex] == true {
+					log.Warning("Client %s is trying to play a piece he already played.", player.UUID())
+					player.Notify(tx.Wrap(tx.Error{
+						Code:   422,
+						Reason: "You cannot play the same piece twice.",
+					}))
+					continue
+				}
+				// TODO: Check for collisions here.
+				playedPieces[sub.PieceIndex] = true
 				this.notifyPlayers(
 					tx.Wrap(tx.CombatPlayerTurn{
 						PlayerUUID: player.UUID(),
-						Piece:      this.target.Clone().Rotate(sub.Rotation),
+						Piece:      state.target.Clone().Rotate(sub.Rotation),
 					}))
+				// Check whether all players have played the current turn.
+				allPlayed := true
+				for _, playedPieces := range state.playedPieces {
+					if len(playedPieces) < state.turn {
+						allPlayed = false
+						break
+					}
+				}
+				if allPlayed {
+					log.Debug("All players have played their turn. Moving on...")
+					state.turn++
+					this.notifyPlayers(
+						tx.Wrap(tx.CombatNewTurn{
+							TurnID: state.turn,
+						}))
+				}
 			}
 		}
 	}

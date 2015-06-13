@@ -44,7 +44,9 @@ type CombatStart struct {
 	Cells  interface{} `json:"cells"`
 	Pieces interface{} `json:"pieces"`
 }
-type CombatNewTurn struct{}
+type CombatNewTurn struct {
+	TurnID int `json:"turnId"`
+}
 type CombatPlayerTurn struct {
 	PlayerUUID string      `json:"playerUUID"`
 	Piece      interface{} `json:"piece"`

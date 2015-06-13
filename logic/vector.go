@@ -53,19 +53,9 @@ func (this *Vector) FromMap(m util.MapHelper) {
 	this.X, this.Y, this.Z = m.Int("x"), m.Int("y"), m.Int("z")
 }
 
-// SameAs checks wether two vectors are holding identical values.
-func (this *Vector) SameAs(other *Vector) bool {
+// CollidesWith checks wether two vectors are holding identical values.
+func (this *Vector) CollidesWith(other *Vector) bool {
 	return this.X == other.GetX() && this.Y == other.GetY() && this.Z == other.GetZ()
-}
-
-// SameAsAny checks wether the current vector is the same as any from the given list.
-func (this *Vector) SameAsAny(others Vectors) bool {
-	for _, elem := range others {
-		if this.SameAs(elem) {
-			return true
-		}
-	}
-	return false
 }
 
 // Clone allows to deep-copy a vector.

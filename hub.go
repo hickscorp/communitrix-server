@@ -61,7 +61,7 @@ func (this *Hub) Run() {
 				// TODO: Remove this from there!!!
 				if len(this.combats) == 0 {
 					log.Warning("This server has no combats, creating a default one.")
-					combat := NewCombat(1, 1)
+					combat := NewCombat(2, 2)
 					this.combats[combat.UUID()] = combat
 					go func(combat *Combat, ch chan<- *rx.Base) {
 						combat.Run()

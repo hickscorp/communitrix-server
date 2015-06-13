@@ -142,7 +142,7 @@ func (this *Player) CommandFromPacket(line []byte) *rx.Base {
 		this.WhileLocked(func() {
 			this.combat.Notify(cbt.Wrap(cbt.PlayTurn{
 				Player:      this,
-				UUID:        rec.String("uuid"),
+				PieceIndex:  rec.Int("pieceIndex"),
 				Rotation:    logic.NewQuaternionFromMap(rec.Map("rotation")),
 				Translation: logic.NewVectorFromMap(rec.Map("translation")),
 			}))
