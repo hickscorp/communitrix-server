@@ -1,5 +1,7 @@
 package logic
 
+import "math/rand"
+
 type Vectors []*Vector
 
 func (this Vectors) Clone() Vectors {
@@ -8,4 +10,12 @@ func (this Vectors) Clone() Vectors {
 		ret[i] = cell.Clone()
 	}
 	return ret
+}
+
+func (this Vectors) Shuffle() Vectors {
+	for i := len(this) - 1; i > 0; i-- {
+		j := rand.Intn(i)
+		this[i], this[j] = this[j], this[i]
+	}
+	return this
 }

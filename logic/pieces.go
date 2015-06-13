@@ -9,3 +9,10 @@ func (this Pieces) Clone() Pieces {
 	}
 	return ret
 }
+
+func (this Pieces) CleanUp() Pieces {
+	for _, piece := range this {
+		piece.CleanUp()
+	}
+	return this
+}

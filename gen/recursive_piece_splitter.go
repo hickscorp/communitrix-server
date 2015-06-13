@@ -27,12 +27,15 @@ func (this *RecursivePieceSplitter) Run(piece *logic.Piece, count int) (logic.Pi
 	}
 
 	// Convert the piece to an array.
-	arr := array.NewContentArrayFromPiece(piece)
-	log.Warning("Total number of pieces: %d", len(piece.Content))
+	arr := array.NewContentArrayFromPiece(piece, nil)
 	// Prepare starting points.
 	ats := make(logic.Vectors, 0, count)
 	for i := 0; i < count; i++ {
-		at := logic.NewVectorFromInts(rand.Intn(piece.Size.X), rand.Intn(piece.Size.Y), rand.Intn(piece.Size.Z))
+		at := logic.NewVectorFromInts(
+			rand.Intn(piece.Size.X),
+			rand.Intn(piece.Size.Y),
+			rand.Intn(piece.Size.Z),
+		)
 		if at.SameAsAny(ats) {
 			i--
 			continue
@@ -43,16 +46,18 @@ func (this *RecursivePieceSplitter) Run(piece *logic.Piece, count int) (logic.Pi
 	// Prepare our pieces array to return.
 	ret := make(logic.Pieces, count)
 	for i := 0; i < count; i++ {
-		ret[i] = logic.NewPiece(logic.NullVector, 0)
+		ret[i] = logic.NewPiece(logic.NewVectorFromInts(0, 0, 0), 0)
 	}
+
 	// Start as many goroutines as we have starting points.
 	recursors := make(Recursors, count)
 	for i, at := range ats {
 		recursor := NewRecursor(i+1, arr)
-		arr.Content[at.X][at.Y][at.Z] = recursor.ID
-		go recursor.Recurse(at, 0)
 		recursors[i] = recursor
+		ret[i].AddCell(recursor.TakeAt(at))
+		go recursor.Recurse(at, 0)
 	}
+
 	done := 0
 	for i := 0; done < count; i++ {
 		idx := i % count
@@ -60,19 +65,14 @@ func (this *RecursivePieceSplitter) Run(piece *logic.Piece, count int) (logic.Pi
 		if recursor != nil {
 			recursor.Advance <- true
 			if cell := <-recursor.Done; cell != nil {
-				piece := ret[idx]
-				piece.Content = append(piece.Content, cell)
+				ret[idx].AddCell(cell)
 			} else {
-				log.Warning("Got Recursor %d end!", recursor.ID)
 				recursors[idx] = nil
 				done++
 			}
 		}
 	}
-	for _, piece := range ret {
-		piece.CleanUp()
-	}
-	return ret, true
+	return ret.CleanUp(), true
 }
 
 type Recursor struct {
@@ -94,29 +94,22 @@ func NewRecursor(id int, arr *array.ContentArray) *Recursor {
 	}
 }
 func (this *Recursor) Recurse(at *logic.Vector, depth int) {
-	dir := shuffle(directions.Clone())
+	dir := directions.Clone().Shuffle()
 	<-this.Advance
 	for _, d := range dir {
 		pos := at.Clone()
 		pos.Translate(d)
 		if pos.X >= 0 && pos.X < this.Arr.Size.X && pos.Y >= 0 && pos.Y < this.Arr.Size.Y && pos.Z >= 0 && pos.Z < this.Arr.Size.Z && this.Arr.Content[pos.X][pos.Y][pos.Z] == -1 {
 			this.Pieces++
-			this.Arr.Content[pos.X][pos.Y][pos.Z] = this.ID
-			this.Done <- logic.NewCellFromInts(pos.X, pos.Y, pos.Z, this.ID)
+			this.Done <- this.TakeAt(pos)
 			this.Recurse(pos, depth+1)
 		}
 	}
-
 	if depth == 0 {
-		log.Warning("Recursor %d: Signaling stop.", this.ID)
 		this.Done <- nil
 	}
 }
-
-func shuffle(arr logic.Vectors) logic.Vectors {
-	for i := len(arr) - 1; i > 0; i-- {
-		j := rand.Intn(i)
-		arr[i], arr[j] = arr[j], arr[i]
-	}
-	return arr
+func (this *Recursor) TakeAt(at *logic.Vector) *logic.Cell {
+	this.Arr.Content[at.X][at.Y][at.Z] = this.ID
+	return logic.NewCellFromInts(at.X, at.Y, at.Z, this.ID)
 }

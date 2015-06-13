@@ -2,7 +2,6 @@ package logic
 
 import (
 	"github.com/op/go-logging"
-	"gogs.pierreqr.fr/doodloo/communitrix/i"
 	"gogs.pierreqr.fr/doodloo/communitrix/util"
 	"math"
 )
@@ -23,6 +22,8 @@ func NewPiece(size *Vector, capacity int) *Piece {
 }
 
 func (this *Piece) CleanUp() {
+	log.Debug("Piece cleanup: Size: %d, Cells: %d.", this.Size, len(this.Content))
+
 	xMin, yMin, zMin, xMax, yMax, zMax := 1000.0, 1000.0, 1000.0, -1000.0, -1000.0, -1000.0
 	for _, cell := range this.Content {
 		x, y, z := float64(cell.X), float64(cell.Y), float64(cell.Z)
@@ -30,16 +31,21 @@ func (this *Piece) CleanUp() {
 		xMax, yMax, zMax = math.Max(xMax, x), math.Max(yMax, y), math.Max(zMax, z)
 	}
 	min := NewVectorFromInts(util.QuickIntRound(xMin), util.QuickIntRound(yMin), util.QuickIntRound(zMin))
+	log.Debug("  - Computed Min: %d", min)
 	max := NewVectorFromInts(util.QuickIntRound(xMax), util.QuickIntRound(yMax), util.QuickIntRound(zMax))
+	log.Debug("  - Computed Max: %d", max)
 
 	this.Size = min.Clone()
 	this.Size.Inv()
 	this.Size.Translate(max)
+	this.Size.Translate(NewVectorFromInts(1, 1, 1))
+	log.Debug("  - Computed Size: %d", this.Size)
+
 	halved := this.Size.Clone()
 	halved.Half()
 	halved.Inv()
-	this.Size.Translate(NewVectorFromInts(1, 1, 1))
 	this.Translate(halved)
+	log.Debug("  - Applied translation: %d", halved)
 }
 
 // Clone allows to deep-copy a piece.
@@ -51,7 +57,7 @@ func (this *Piece) Clone() *Piece {
 }
 
 // Translate applies a given translation transformation to the current object. The current object is then returned for chaining.
-func (this *Piece) Translate(t i.Localizable) {
+func (this *Piece) Translate(t *Vector) {
 	for _, v := range this.Content {
 		v.Translate(t)
 	}
@@ -63,4 +69,8 @@ func (this *Piece) Rotate(q *Quaternion) {
 	for _, v := range this.Content {
 		v.Rotate(q)
 	}
+}
+
+func (this *Piece) AddCell(cell *Cell) {
+	this.Content = append(this.Content, cell)
 }

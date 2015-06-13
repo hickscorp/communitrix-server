@@ -1,14 +1,11 @@
 package gen
 
 import (
-	"github.com/op/go-logging"
 	"gogs.pierreqr.fr/doodloo/communitrix/array"
 	"gogs.pierreqr.fr/doodloo/communitrix/logic"
 	"gogs.pierreqr.fr/doodloo/communitrix/util"
 	"math/rand"
 )
-
-var log = logging.MustGetLogger("communitrix")
 
 type CellularAutomata struct {
 	size            *logic.Vector
@@ -102,8 +99,7 @@ func (this *CellularAutomata) Run(density float64) (*logic.Piece, bool) {
 	piece := logic.NewPiece(this.size, totalCellsAdded-1)
 	this.result.Each(func(at *logic.Vector, val int) {
 		if val != 0 {
-			cell := logic.NewCellFromInts(at.X, at.Y, at.Z, val)
-			piece.Content = append(piece.Content, cell)
+			piece.AddCell(logic.NewCellFromVectorAndValue(at, val))
 		}
 	})
 	this.result, this.probabilities = nil, nil

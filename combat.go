@@ -190,18 +190,19 @@ func (this *Combat) Run() {
 }
 
 func (this *Combat) Prepare() (*cbt.Start, bool) {
+	log.Warning("Preparing combat %s.", this.uuid)
+
 	// Cache player count.
 	playerCount := len(this.players)
 	// Prepare data.
-	target, ok := gen.NewCellularAutomata(logic.NewVectorFromInts(5, 7, 5)).Run(0.6)
+	target, ok := gen.NewCellularAutomata(&logic.Vector{5, 7, 5}).Run(0.6)
 	if !ok {
 		log.Warning("Something went wrong during target generation.")
 		return nil, false
 	}
-	log.Warning("Target will be of size %d.", target.Size)
+	log.Debug("  - Target: Cells %d, Size: %d", target.Size, len(target.Content))
 
-	log.Info("Finished generating target.")
-	pieces, ok := gen.NewRecursivePieceSplitter().Run(target, 3)
+	pieces, ok := gen.NewRecursivePieceSplitter().Run(target, len(target.Content)/15)
 	if !ok {
 		log.Warning("Something went wrong during pieces generation.")
 		return nil, false
@@ -215,6 +216,7 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	for i := 0; i < playerCount; i++ {
 		cells[i] = logic.NewPiece(logic.NewVectorFromInts(0, 0, 0), 0)
 	}
+
 	target.CleanUp()
 	// Signal combat preparation is over.
 	return &cbt.Start{

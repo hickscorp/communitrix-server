@@ -22,7 +22,8 @@ func init() {
 }
 
 func main() {
-	runtime.GOMAXPROCS(8)
+	log.Warning("Booting on up to %d CPUs...", runtime.NumCPU())
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// Allows to parse a single parameter, the port.
 	config.Port = flag.Int("port", 9003, "Port to serve on.")
