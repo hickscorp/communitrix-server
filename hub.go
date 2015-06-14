@@ -6,6 +6,7 @@ import (
 	"gogs.pierreqr.fr/doodloo/communitrix/i"
 	"net"
 	"reflect"
+	"time"
 )
 
 // Hub structure handles interractions between players.
@@ -59,14 +60,15 @@ func (this *Hub) Run() {
 
 			// Player wants a list of existing combats.
 			case rx.CombatList:
+				time.Sleep(time.Millisecond * 500)
 				combats := make([]string, 0)
 				// TODO: Remove this from there!!!
 				for {
 					if len(this.combats) >= 2 {
 						break
 					}
-					log.Warning("This server has no combats, creating a default one.")
-					combat := NewCombat(2, 2)
+					log.Warning("This server only has %d combats, creating one more.", len(this.combats))
+					combat := NewCombat(1, 1)
 					this.combats[combat.UUID()] = combat
 					go func(combat *Combat, ch chan<- *rx.Base) {
 						combat.Run()
