@@ -30,11 +30,11 @@ type Combat struct {
 	players                map[string]i.Player // Maintains a list of known players.
 	commandQueue           chan *cbt.Base      // The Combat command queue.
 	minPlayers, maxPlayers int                 // The minimum / maximum number of players that can join.
-	state                  *state              // The current combat state.
+	state                  *combatState        // The current combat state.
 }
 
 // This represents the combat state at any point in time.
-type state struct {
+type combatState struct {
 	turn          int                     // The current turn ID.
 	target        *logic.Piece            // The objective for all players.
 	cells         logic.Pieces            // State of each player
@@ -52,8 +52,9 @@ func NewCombat(minPlayers, maxPlayers int) *Combat {
 		mutex:        sync.Mutex{},
 		players:      make(map[string]i.Player),
 		commandQueue: make(chan *cbt.Base, *config.HubCommandBufferSize),
-		minPlayers:   minPlayers, maxPlayers: maxPlayers,
-		state: nil,
+		minPlayers:   minPlayers,
+		maxPlayers:   maxPlayers,
+		state:        nil,
 	}
 }
 
@@ -139,7 +140,7 @@ func (this *Combat) Run() {
 			// Should prepare the combat now.
 			case cbt.Prepare:
 				if this.state == nil {
-					this.state = &state{
+					this.state = &combatState{
 						turn:          0,
 						target:        nil,
 						cells:         nil,
@@ -164,21 +165,20 @@ func (this *Combat) Run() {
 				}
 			// Once the combat is ready... Start it.
 			case cbt.Start:
-				state := this.state
-				state.turn = 1
-				state.target, state.pieces, state.cells = sub.Target, sub.Pieces, sub.Cells
+				this.state.turn = 1
+				this.state.target, this.state.pieces, this.state.cells = sub.Target, sub.Pieces, sub.Cells
 				index := 0
 				for _, player := range this.players {
-					state.cellsRotation[player.UUID()] = index
-					state.playedPieces[player.UUID()] = make(map[int]bool)
+					this.state.cellsRotation[player.UUID()] = index
+					this.state.playedPieces[player.UUID()] = make(map[int]bool)
 					index++
 				}
 				this.notifyPlayers(
 					tx.Wrap(tx.CombatStart{
 						UUID:   this.uuid,
-						Target: state.target,
-						Pieces: state.pieces,
-						Cells:  state.cells,
+						Target: this.state.target,
+						Pieces: this.state.pieces,
+						Cells:  this.state.cells,
 					}))
 
 			// A new turn has started.
@@ -187,8 +187,7 @@ func (this *Combat) Run() {
 			// A player is playing his turn.
 			case cbt.PlayTurn:
 				player := sub.Player.(i.Player)
-				state := this.state
-				if state == nil || state.turn == 0 {
+				if this.state == nil || this.state.turn == 0 {
 					log.Warning("Client %s is sending turns while the combat hasn't started.", player.UUID())
 					player.Notify(tx.Wrap(tx.Error{
 						Code:   422,
@@ -196,7 +195,7 @@ func (this *Combat) Run() {
 					}))
 					continue
 				}
-				playedPieces := state.playedPieces[player.UUID()]
+				playedPieces := this.state.playedPieces[player.UUID()]
 				if playedPieces[sub.PieceIndex] == true {
 					log.Warning("Client %s is trying to play a piece he already played.", player.UUID())
 					player.Notify(tx.Wrap(tx.Error{
@@ -210,22 +209,22 @@ func (this *Combat) Run() {
 				this.notifyPlayers(
 					tx.Wrap(tx.CombatPlayerTurn{
 						PlayerUUID: player.UUID(),
-						Piece:      state.target.Clone().Rotate(sub.Rotation),
+						Piece:      this.state.target.Clone().Rotate(sub.Rotation),
 					}))
 				// Check whether all players have played the current turn.
 				allPlayed := true
-				for _, playedPieces := range state.playedPieces {
-					if len(playedPieces) < state.turn {
+				for _, playedPieces := range this.state.playedPieces {
+					if len(playedPieces) < this.state.turn {
 						allPlayed = false
 						break
 					}
 				}
 				if allPlayed {
 					log.Debug("All players have played their turn. Moving on...")
-					state.turn++
+					this.state.turn++
 					this.notifyPlayers(
 						tx.Wrap(tx.CombatNewTurn{
-							TurnID: state.turn,
+							TurnID: this.state.turn,
 						}))
 				}
 			}
