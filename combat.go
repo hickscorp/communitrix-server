@@ -204,6 +204,10 @@ func (this *Combat) Run() {
 					}))
 					continue
 				}
+				piece := this.state.pieces[sub.PieceIndex].Clone()
+				piece.Translate(sub.Translation).Rotate(sub.Rotation)
+				log.Debug("Piece %d (%v) played with translation %v and rotation %v.", sub.PieceIndex, piece.Size, sub.Translation, sub.Rotation)
+
 				// TODO: Check for collisions here.
 				playedPieces[sub.PieceIndex] = true
 				this.notifyPlayers(
@@ -233,7 +237,7 @@ func (this *Combat) Run() {
 }
 
 func (this *Combat) Prepare() (*cbt.Start, bool) {
-	log.Warning("Preparing combat %s.", this.uuid)
+	log.Debug("Preparing combat %s.", this.uuid)
 
 	// Cache player count.
 	playerCount := len(this.players)

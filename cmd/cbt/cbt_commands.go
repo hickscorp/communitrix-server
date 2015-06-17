@@ -21,6 +21,6 @@ type StartNewTurn struct{}
 type PlayTurn struct {
 	Player      interface{}
 	PieceIndex  int
-	Rotation    *logic.Quaternion
 	Translation *logic.Vector
+	Rotation    *logic.Quaternion
 }
