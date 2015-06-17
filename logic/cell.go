@@ -10,11 +10,11 @@ type Cell struct {
 	Value int `json:"value"`
 }
 
-func NewCellFromInts(x, y, z, v int) *Cell {
+func NewCellFromValues(x, y, z, v int) *Cell {
 	return &Cell{Vector: &Vector{x, y, z}, Value: v}
 }
 
-func (this *Cell) FromInts(x, y, z, v int) *Cell {
+func (this *Cell) FromValues(x, y, z, v int) *Cell {
 	this.X, this.Y, this.Z, this.Value = x, y, z, v
 	return this
 }

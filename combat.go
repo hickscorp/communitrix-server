@@ -238,14 +238,14 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	// Cache player count.
 	playerCount := len(this.players)
 	// Prepare data.
-	target, ok := gen.NewCellularAutomata(&logic.Vector{5, 7, 5}).Run(0.6)
+	target, ok := gen.NewCellularAutomata(&logic.Vector{5, 3, 3}).Run(0.6)
 	if !ok {
 		log.Warning("Something went wrong during target generation.")
 		return nil, false
 	}
 	log.Debug("  - Target: Cells %d, Size: %d", target.Size, len(target.Content))
 
-	pieces, ok := gen.NewRecursivePieceSplitter().Run(target, len(target.Content)/15)
+	pieces, ok := gen.NewPieceSplitter().Run(target, 2)
 	if !ok {
 		log.Warning("Something went wrong during pieces generation.")
 		return nil, false
@@ -257,7 +257,7 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	}
 	// Temporary fix.
 	for i := 0; i < playerCount; i++ {
-		cells[i] = logic.NewPiece(logic.NewVectorFromInts(0, 0, 0), 0)
+		cells[i] = logic.NewPiece(logic.NewVectorFromValues(0, 0, 0), 0)
 	}
 
 	target.CleanUp()

@@ -31,12 +31,12 @@ func (this *Vector) FromVector(other *Vector) *Vector {
 }
 
 // Instanciator based on a list of integers.
-func NewVectorFromInts(x, y, z int) *Vector {
-	return (&Vector{}).FromInts(x, y, z)
+func NewVectorFromValues(x, y, z int) *Vector {
+	return (&Vector{}).FromValues(x, y, z)
 }
 
 // Updates values from a list of integers.
-func (this *Vector) FromInts(x, y, z int) *Vector {
+func (this *Vector) FromValues(x, y, z int) *Vector {
 	this.X, this.Y, this.Z = x, y, z
 	return this
 }

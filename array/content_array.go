@@ -67,7 +67,7 @@ func (this *ContentArray) Clone() *ContentArray {
 func (this *ContentArray) ToPiece() *logic.Piece {
 	ret := logic.NewPiece(this.Size, 0)
 	this.Each(func(at *logic.Vector, val int) {
-		ret.AddCell(logic.NewCellFromInts(at.X, at.Y, at.Z, val))
+		ret.AddCell(logic.NewCellFromValues(at.X, at.Y, at.Z, val))
 	})
 	return ret
 }

@@ -37,13 +37,13 @@ func (this *Piece) CleanUp() *Piece {
 		xMax, yMax, zMax = math.Max(xMax, x), math.Max(yMax, y), math.Max(zMax, z)
 	}
 	// Make a vector for minimum limits.
-	min := NewVectorFromInts(util.QuickIntRound(xMin), util.QuickIntRound(yMin), util.QuickIntRound(zMin))
+	min := NewVectorFromValues(util.QuickIntRound(xMin), util.QuickIntRound(yMin), util.QuickIntRound(zMin))
 	log.Debug("  - Computed Min: %d", min)
 	// Make another vector for maximum limuts.
-	max := NewVectorFromInts(util.QuickIntRound(xMax), util.QuickIntRound(yMax), util.QuickIntRound(zMax))
+	max := NewVectorFromValues(util.QuickIntRound(xMax), util.QuickIntRound(yMax), util.QuickIntRound(zMax))
 	log.Debug("  - Computed Max: %d", max)
 	// Set the new piece size.
-	this.Size = min.Clone().Inv().Translate(max).Translate(NewVectorFromInts(1, 1, 1))
+	this.Size = min.Clone().Inv().Translate(max).Translate(NewVectorFromValues(1, 1, 1))
 	log.Debug("  - Computed Size: %d", this.Size)
 	// Pinpoint the center of the piece, invert it.
 	halved := min.Clone().Inv().Translate(max).Clone().Half().Inv()
