@@ -249,7 +249,7 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	}
 	log.Debug("  - Target: Cells %d, Size: %d", target.Size, len(target.Content))
 
-	pieces, ok := gen.NewPieceSplitter().Run(target, 2)
+	pieces, ok := gen.NewPieceSplitter().Run(target, 4)
 	if !ok {
 		log.Warning("Something went wrong during pieces generation.")
 		return nil, false
