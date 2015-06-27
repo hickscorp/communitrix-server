@@ -10,6 +10,8 @@ var log = logging.MustGetLogger("communitrix")
 
 type Piece struct {
 	Size    *Vector `json:"size"`
+	Min     *Vector `json:"min"`
+	Max     *Vector `json:"max"`
 	Content Cells   `json:"content"`
 }
 
@@ -17,6 +19,8 @@ type Piece struct {
 func NewPiece(size *Vector, capacity int) *Piece {
 	return &Piece{
 		Size:    size.Clone(),
+		Min:     NewVectorFromValues(0, 0, 0),
+		Max:     NewVectorFromValues(0, 0, 0),
 		Content: make(Cells, 0, capacity),
 	}
 }
@@ -37,19 +41,13 @@ func (this *Piece) CleanUp() *Piece {
 		xMax, yMax, zMax = math.Max(xMax, x), math.Max(yMax, y), math.Max(zMax, z)
 	}
 	// Make a vector for minimum limits.
-	min := NewVectorFromValues(util.QuickIntRound(xMin), util.QuickIntRound(yMin), util.QuickIntRound(zMin))
-	log.Debug("  - Computed Min: %d", min)
-	// Make another vector for maximum limuts.
-	max := NewVectorFromValues(util.QuickIntRound(xMax), util.QuickIntRound(yMax), util.QuickIntRound(zMax))
-	log.Debug("  - Computed Max: %d", max)
-	// Set the new piece size.
-	this.Size = min.Clone().Inv().Translate(max).Translate(NewVectorFromValues(1, 1, 1))
-	log.Debug("  - Computed Size: %d", this.Size)
-	// Pinpoint the center of the piece, invert it.
-	halved := min.Clone().Inv().Translate(max).Clone().Half().Inv()
-	log.Debug("  - Will apply translation: %d", halved)
-	// Translate all this piece's cells.
-	this.Translate(halved)
+	this.Min = NewVectorFromValues(util.QuickIntRound(xMin), util.QuickIntRound(yMin), util.QuickIntRound(zMin))
+	this.Max = NewVectorFromValues(util.QuickIntRound(xMax), util.QuickIntRound(yMax), util.QuickIntRound(zMax))
+	this.Size = this.Max.Clone().Sub(this.Min).Add(NewVectorFromValues(1, 1, 1))
+	center := this.Max.Clone().Sub(this.Min).Half().Add(this.Min)
+	log.Debug("  - Old Min: %d, Old Max: %d, Old Size: %d", this.Min, this.Max, this.Size)
+	this.Translate(center.Clone().Inv())
+	log.Debug("  - New Min: %d, New Max: %d, New Size: %d", this.Min, this.Max, this.Size)
 	return this
 }
 
@@ -57,12 +55,16 @@ func (this *Piece) CleanUp() *Piece {
 func (this *Piece) Clone() *Piece {
 	return &Piece{
 		Size:    this.Size.Clone(),
+		Min:     this.Min.Clone(),
+		Max:     this.Max.Clone(),
 		Content: this.Content.Clone(),
 	}
 }
 
 // Translate applies a given translation transformation to the current object. The current object is then returned for chaining.
 func (this *Piece) Translate(t *Vector) *Piece {
+	this.Min.Translate(t)
+	this.Max.Translate(t)
 	for _, v := range this.Content {
 		v.Translate(t)
 	}

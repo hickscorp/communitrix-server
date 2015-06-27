@@ -84,6 +84,14 @@ func (this *Vector) Translate(t *Vector) *Vector {
 	this.X, this.Y, this.Z = this.X+t.GetX(), this.Y+t.GetY(), this.Z+t.GetZ()
 	return this
 }
+func (this *Vector) Add(t *Vector) *Vector {
+	this.X, this.Y, this.Z = this.X+t.GetX(), this.Y+t.GetY(), this.Z+t.GetZ()
+	return this
+}
+func (this *Vector) Sub(t *Vector) *Vector {
+	this.X, this.Y, this.Z = this.X-t.GetX(), this.Y-t.GetY(), this.Z-t.GetZ()
+	return this
+}
 
 // Rotate applies a rotation transformation to the current object. The current object is then returned for chaining.
 func (this *Vector) Rotate(iq interface{}) *Vector {

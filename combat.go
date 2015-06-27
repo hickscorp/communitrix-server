@@ -204,16 +204,21 @@ func (this *Combat) Run() {
 					}))
 					continue
 				}
-				piece := this.state.pieces[sub.PieceIndex].Clone()
-				piece.Translate(sub.Translation).Rotate(sub.Rotation)
-				log.Debug("Piece %d (%v) played with translation %v and rotation %v.", sub.PieceIndex, piece.Size, sub.Translation, sub.Rotation)
+				piece := this.state.pieces[sub.PieceIndex].Clone().Rotate(sub.Rotation).Translate(sub.Translation)
+				log.Debug("Piece %d played with translation %v and rotation %v.", sub.PieceIndex, sub.Translation, sub.Rotation)
 
 				// TODO: Check for collisions here.
 				playedPieces[sub.PieceIndex] = true
+				unit := this.state.cells[0]
+				for _, c := range piece.Content {
+					unit.AddCell(c)
+				}
+				unit.CleanUp()
+
 				this.notifyPlayers(
 					tx.Wrap(tx.CombatPlayerTurn{
 						PlayerUUID: player.UUID(),
-						Piece:      this.state.target.Clone().Rotate(sub.Rotation),
+						Piece:      unit, //this.state.target.Clone().Rotate(sub.Rotation),
 					}))
 				// Check whether all players have played the current turn.
 				allPlayed := true
@@ -242,14 +247,14 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	// Cache player count.
 	playerCount := len(this.players)
 	// Prepare data.
-	target, ok := gen.NewCellularAutomata(&logic.Vector{5, 3, 3}).Run(0.6)
+	target, ok := gen.NewCellularAutomata(&logic.Vector{5, 3, 3}).Run(0.5)
 	if !ok {
 		log.Warning("Something went wrong during target generation.")
 		return nil, false
 	}
 	log.Debug("  - Target: Cells %d, Size: %d", target.Size, len(target.Content))
 
-	pieces, ok := gen.NewPieceSplitter().Run(target, 8)
+	pieces, ok := gen.NewPieceSplitter().Run(target, 10)
 	if !ok {
 		log.Warning("Something went wrong during pieces generation.")
 		return nil, false
