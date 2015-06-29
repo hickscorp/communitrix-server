@@ -245,14 +245,14 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	// Cache player count.
 	playerCount := len(this.players)
 	// Prepare data.
-	target, ok := gen.NewCellularAutomata(&logic.Vector{4, 3, 3}).Run(0.5)
+	target, ok := gen.NewCellularAutomata(&logic.Vector{4, 3, 3}).Run(0.7)
 	if !ok {
 		log.Warning("Something went wrong during target generation.")
 		return nil, false
 	}
 	log.Debug("  - Target: Cells %d, Size: %d", target.Size, len(target.Content))
 
-	pieces, ok := gen.NewPieceSplitter().Run(target, 8)
+	pieces, ok := gen.NewPieceSplitter().Run(target, 6)
 	if !ok {
 		log.Warning("Something went wrong during pieces generation.")
 		return nil, false
