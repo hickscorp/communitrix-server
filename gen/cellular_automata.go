@@ -24,10 +24,7 @@ func NewCellularAutomata(size *logic.Vector) *CellularAutomata {
 // Run creates the unit.
 func (this *CellularAutomata) Run(density float64) (*logic.Piece, bool) {
 	// Normalize inputs.
-	if (density < 0.0 || density > 1.0) ||
-		(this.size.X <= 0 || this.size.X&1 == 0) ||
-		(this.size.Y <= 0 || this.size.Y&1 == 0) ||
-		(this.size.Z <= 0 || this.size.Z&1 == 0) {
+	if (density < 0.0 || density > 1.0) || this.size.X <= 0 || this.size.Y <= 0 || this.size.Z <= 0 {
 		return nil, false
 	}
 	// Prepare the total number of blocks to be created.

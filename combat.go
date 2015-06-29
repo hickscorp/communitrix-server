@@ -149,19 +149,17 @@ func (this *Combat) Run() {
 						cellsRotation: make(map[string]int),
 					}
 
-					go func(combat *Combat) {
-						notification, ok := combat.Prepare()
-						if !ok {
-							combat.notifyPlayers(
-								tx.Wrap(
-									tx.Error{
-										Code:   500,
-										Reason: "Something went wrong while preparing the combat. Please try again.",
-									}))
-						} else {
-							combat.commandQueue <- cbt.Wrap(*notification)
-						}
-					}(this)
+					notification, ok := this.Prepare()
+					if !ok {
+						this.notifyPlayers(
+							tx.Wrap(
+								tx.Error{
+									Code:   500,
+									Reason: "Something went wrong while preparing the combat. Please try again.",
+								}))
+					} else {
+						this.commandQueue <- cbt.Wrap(*notification)
+					}
 				}
 			// Once the combat is ready... Start it.
 			case cbt.Start:
@@ -247,14 +245,14 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	// Cache player count.
 	playerCount := len(this.players)
 	// Prepare data.
-	target, ok := gen.NewCellularAutomata(&logic.Vector{5, 3, 3}).Run(0.5)
+	target, ok := gen.NewCellularAutomata(&logic.Vector{4, 3, 3}).Run(0.5)
 	if !ok {
 		log.Warning("Something went wrong during target generation.")
 		return nil, false
 	}
 	log.Debug("  - Target: Cells %d, Size: %d", target.Size, len(target.Content))
 
-	pieces, ok := gen.NewPieceSplitter().Run(target, 10)
+	pieces, ok := gen.NewPieceSplitter().Run(target, 8)
 	if !ok {
 		log.Warning("Something went wrong during pieces generation.")
 		return nil, false
