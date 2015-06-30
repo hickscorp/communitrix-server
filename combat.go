@@ -230,12 +230,24 @@ func (this *Combat) Run() {
 				log.Debug("Piece %d played with translation %v and rotation %v.", sub.PieceIndex, sub.Translation, sub.Rotation)
 
 				// TODO: Check for collisions here.
-				player.Notify(tx.Wrap(tx.Acknowledgment{Serial: "PlayTurn", Valid: true}))
-
-				playedPieces[sub.PieceIndex] = true
 				playerIndex := this.state.playerIndices[player.UUID()]
 				unitId := (playerIndex + this.state.turn) % len(this.state.units)
 				unit := this.state.units[unitId]
+
+				for _, v := range piece.Content{
+					if unit.Content.CollidesWith(v){
+						unit = nil
+						break
+					}
+				}
+				player.Notify(tx.Wrap(tx.Acknowledgment{Serial: "PlayTurn", Valid: unit != nil}))
+				if unit == nil{
+					log.Warning("Collision detected")
+					break;
+				}
+
+				playedPieces[sub.PieceIndex] = true
+
 				for _, c := range piece.Content {
 					unit.AddCell(c)
 				}
