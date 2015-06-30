@@ -37,10 +37,10 @@ type Combat struct {
 type combatState struct {
 	turn          int                     // The current turn ID.
 	target        *logic.Piece            // The objective for all players.
-	cells         logic.Pieces            // State of each player
+	units         logic.Pieces            // State of each player
 	pieces        logic.Pieces            // The pieces all players are given.
 	playedPieces  map[string]map[int]bool // Associative player name -> Piece ID -> Boolean.
-	cellsRotation map[string]int          // The current cells belongings.
+	playerIndices map[string]int          // Indices associated to each player.
 }
 
 func (this *Combat) UUID() string           { return this.uuid }
@@ -143,10 +143,16 @@ func (this *Combat) Run() {
 					this.state = &combatState{
 						turn:          0,
 						target:        nil,
-						cells:         nil,
+						units:         nil,
 						pieces:        nil,
 						playedPieces:  make(map[string]map[int]bool),
-						cellsRotation: make(map[string]int),
+						playerIndices: make(map[string]int),
+					}
+					// Create players indices mapping.
+					idx := 0
+					for uuid, _ := range this.players {
+						this.state.playerIndices[uuid] = idx
+						idx++
 					}
 
 					notification, ok := this.Prepare()
@@ -164,10 +170,9 @@ func (this *Combat) Run() {
 			// Once the combat is ready... Start it.
 			case cbt.Start:
 				this.state.turn = 1
-				this.state.target, this.state.pieces, this.state.cells = sub.Target, sub.Pieces, sub.Cells
+				this.state.target, this.state.pieces, this.state.units = sub.Target, sub.Pieces, sub.Units
 				index := 0
 				for _, player := range this.players {
-					this.state.cellsRotation[player.UUID()] = index
 					this.state.playedPieces[player.UUID()] = make(map[int]bool)
 					index++
 				}
@@ -175,9 +180,16 @@ func (this *Combat) Run() {
 					tx.Wrap(tx.CombatStart{
 						UUID:   this.uuid,
 						Target: this.state.target,
+						Units:  this.state.units,
 						Pieces: this.state.pieces,
-						Cells:  this.state.cells,
 					}))
+				for _, player := range this.players {
+					player.Notify(
+						tx.Wrap(tx.CombatNewTurn{
+							TurnID: this.state.turn,
+							UnitID: (this.state.playerIndices[player.UUID()] + this.state.turn) % len(this.state.units),
+						}))
+				}
 
 			// A new turn has started.
 			case cbt.StartNewTurn:
@@ -207,7 +219,9 @@ func (this *Combat) Run() {
 
 				// TODO: Check for collisions here.
 				playedPieces[sub.PieceIndex] = true
-				unit := this.state.cells[0]
+				playerIndex := this.state.playerIndices[player.UUID()]
+				unitId := (playerIndex + this.state.turn) % len(this.state.units)
+				unit := this.state.units[unitId]
 				for _, c := range piece.Content {
 					unit.AddCell(c)
 				}
@@ -216,7 +230,8 @@ func (this *Combat) Run() {
 				this.notifyPlayers(
 					tx.Wrap(tx.CombatPlayerTurn{
 						PlayerUUID: player.UUID(),
-						Piece:      unit, //this.state.target.Clone().Rotate(sub.Rotation),
+						UnitID:     unitId,
+						Unit:       unit, //this.state.target.Clone().Rotate(sub.Rotation),
 					}))
 				// Check whether all players have played the current turn.
 				allPlayed := true
@@ -229,10 +244,14 @@ func (this *Combat) Run() {
 				if allPlayed {
 					log.Debug("All players have played their turn. Moving on...")
 					this.state.turn++
-					this.notifyPlayers(
-						tx.Wrap(tx.CombatNewTurn{
-							TurnID: this.state.turn,
-						}))
+					for _, player := range this.players {
+						player.Notify(
+							tx.Wrap(tx.CombatNewTurn{
+								TurnID: this.state.turn,
+								UnitID: (this.state.playerIndices[player.UUID()] + this.state.turn) % len(this.state.units),
+							}))
+					}
+
 				}
 			}
 		}
@@ -245,7 +264,7 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	// Cache player count.
 	playerCount := len(this.players)
 	// Prepare data.
-	target, ok := gen.NewCellularAutomata(&logic.Vector{4, 3, 3}).Run(0.7)
+	target, ok := gen.NewCellularAutomata(&logic.Vector{4, 3, 3}).Run(0.5)
 	if !ok {
 		log.Warning("Something went wrong during target generation.")
 		return nil, false
@@ -257,14 +276,14 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 		log.Warning("Something went wrong during pieces generation.")
 		return nil, false
 	}
-	cells, ok := make(logic.Pieces, playerCount), true
+	units, ok := make(logic.Pieces, playerCount), true
 	if !ok {
-		log.Warning("Something went wrong during cells generation.")
+		log.Warning("Something went wrong during units generation.")
 		return nil, false
 	}
 	// Temporary fix.
 	for i := 0; i < playerCount; i++ {
-		cells[i] = logic.NewPiece(logic.NewVectorFromValues(0, 0, 0), 0)
+		units[i] = logic.NewPiece(logic.NewVectorFromValues(0, 0, 0), 0)
 	}
 
 	target.CleanUp()
@@ -272,6 +291,6 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	return &cbt.Start{
 		Target: target,
 		Pieces: pieces,
-		Cells:  cells,
+		Units:  units,
 	}, true
 }

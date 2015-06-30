@@ -41,14 +41,16 @@ type CombatPlayerLeft struct {
 type CombatStart struct {
 	UUID   string      `json:"uuid"` // The combat unique identifier on the server.
 	Target interface{} `json:"target"`
-	Cells  interface{} `json:"cells"`
+	Units  interface{} `json:"units"`
 	Pieces interface{} `json:"pieces"`
 }
 type CombatNewTurn struct {
 	TurnID int `json:"turnId"`
+	UnitID int `json:"unitId"`
 }
 type CombatPlayerTurn struct {
 	PlayerUUID string      `json:"playerUUID"`
-	Piece      interface{} `json:"piece"`
+	UnitID     int         `json:"unitId"`
+	Unit       interface{} `json:"unit"`
 }
 type CombatEnd struct{}
