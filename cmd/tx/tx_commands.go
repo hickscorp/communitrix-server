@@ -19,6 +19,10 @@ type Error struct {
 	Code   int    `json:"code"`
 	Reason string `json:"reason"`
 }
+type Acknowledgment struct {
+	Serial string `json:"serial"`
+	Valid  bool   `json:"valid"`
+}
 type Welcome struct {
 	Message string `json:"message"`
 }
@@ -50,6 +54,7 @@ type CombatNewTurn struct {
 }
 type CombatPlayerTurn struct {
 	PlayerUUID string      `json:"playerUUID"`
+	PieceID    int         `json:"pieceId"`
 	UnitID     int         `json:"unitId"`
 	Unit       interface{} `json:"unit"`
 }

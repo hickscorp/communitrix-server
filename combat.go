@@ -75,9 +75,16 @@ func (this *Combat) sendablePlayers() []util.MapHelper {
 	}
 	return players
 }
-func (this *Combat) notifyPlayers(cmd *tx.Base) {
-	for _, player := range this.players {
-		player.Notify(cmd)
+func (this *Combat) notifyPlayers(do func(i.Player) *tx.Base, perPlayerNotification bool) {
+	if perPlayerNotification {
+		for _, player := range this.players {
+			player.Notify(do(player))
+		}
+	} else {
+		notif := do(nil)
+		for _, player := range this.players {
+			player.Notify(notif)
+		}
 	}
 }
 
@@ -107,17 +114,16 @@ func (this *Combat) Run() {
 				}
 				if _, ok := this.players[player.UUID()]; !ok {
 					// Notify all other players.
-					this.notifyPlayers(
-						tx.Wrap(tx.CombatPlayerJoined{
+					joinNotif := func(i.Player) *tx.Base {
+						return tx.Wrap(tx.CombatPlayerJoined{
 							Player: player.AsSendable(),
-						}))
+						})
+					}
+					this.notifyPlayers(joinNotif, false)
 					// Add the originator to our list of players.
 					this.players[player.UUID()] = player
 					// The originator can join.
-					player.Notify(tx.Wrap(
-						tx.CombatJoin{
-							Combat: this.AsSendable(),
-						}))
+					player.Notify(tx.Wrap(tx.CombatJoin{Combat: this.AsSendable()}))
 				}
 				// We reached the correct number of players, start the combat!
 				pCount := len(this.players)
@@ -135,7 +141,10 @@ func (this *Combat) Run() {
 					return
 				}
 				// Notify all other players.
-				this.notifyPlayers(tx.Wrap(tx.CombatPlayerLeft{UUID: player.UUID()}))
+				leaveNotif := func(i.Player) *tx.Base {
+					return tx.Wrap(tx.CombatPlayerLeft{UUID: player.UUID()})
+				}
+				this.notifyPlayers(leaveNotif, false)
 
 			// Should prepare the combat now.
 			case cbt.Prepare:
@@ -157,12 +166,10 @@ func (this *Combat) Run() {
 
 					notification, ok := this.Prepare()
 					if !ok {
-						this.notifyPlayers(
-							tx.Wrap(
-								tx.Error{
-									Code:   500,
-									Reason: "Something went wrong while preparing the combat. Please try again.",
-								}))
+						errorNotif := func(i.Player) *tx.Base {
+							return tx.Wrap(tx.Error{Code: 500, Reason: "Something went wrong while preparing the combat. Please try again."})
+						}
+						this.notifyPlayers(errorNotif, false)
 					} else {
 						this.commandQueue <- cbt.Wrap(*notification)
 					}
@@ -176,20 +183,25 @@ func (this *Combat) Run() {
 					this.state.playedPieces[player.UUID()] = make(map[int]bool)
 					index++
 				}
-				this.notifyPlayers(
-					tx.Wrap(tx.CombatStart{
-						UUID:   this.uuid,
-						Target: this.state.target,
-						Units:  this.state.units,
-						Pieces: this.state.pieces,
-					}))
-				for _, player := range this.players {
-					player.Notify(
-						tx.Wrap(tx.CombatNewTurn{
-							TurnID: this.state.turn,
-							UnitID: (this.state.playerIndices[player.UUID()] + this.state.turn) % len(this.state.units),
-						}))
+				// Give everyone the combat start notification.
+				startNotif := func(i.Player) *tx.Base {
+					return tx.Wrap(
+						tx.CombatStart{
+							UUID:   this.uuid,
+							Target: this.state.target,
+							Units:  this.state.units,
+							Pieces: this.state.pieces,
+						})
 				}
+				this.notifyPlayers(startNotif, false)
+				// Give everyone informations about the turn.
+				turnNotif := func(p i.Player) *tx.Base {
+					return tx.Wrap(tx.CombatNewTurn{
+						TurnID: this.state.turn,
+						UnitID: (this.state.playerIndices[p.UUID()] + this.state.turn) % len(this.state.units),
+					})
+				}
+				this.notifyPlayers(turnNotif, true)
 
 			// A new turn has started.
 			case cbt.StartNewTurn:
@@ -218,6 +230,8 @@ func (this *Combat) Run() {
 				log.Debug("Piece %d played with translation %v and rotation %v.", sub.PieceIndex, sub.Translation, sub.Rotation)
 
 				// TODO: Check for collisions here.
+				player.Notify(tx.Wrap(tx.Acknowledgment{Serial: "PlayTurn", Valid: true}))
+
 				playedPieces[sub.PieceIndex] = true
 				playerIndex := this.state.playerIndices[player.UUID()]
 				unitId := (playerIndex + this.state.turn) % len(this.state.units)
@@ -227,12 +241,16 @@ func (this *Combat) Run() {
 				}
 				unit.CleanUp()
 
-				this.notifyPlayers(
-					tx.Wrap(tx.CombatPlayerTurn{
+				playerMoveNotif := func(i.Player) *tx.Base {
+					return tx.Wrap(tx.CombatPlayerTurn{
 						PlayerUUID: player.UUID(),
+						PieceID:    sub.PieceIndex,
 						UnitID:     unitId,
-						Unit:       unit, //this.state.target.Clone().Rotate(sub.Rotation),
-					}))
+						Unit:       unit,
+					})
+				}
+				this.notifyPlayers(playerMoveNotif, false)
+
 				// Check whether all players have played the current turn.
 				allPlayed := true
 				for _, playedPieces := range this.state.playedPieces {
