@@ -58,12 +58,21 @@ func NewCombat(minPlayers, maxPlayers int) *Combat {
 	}
 }
 
+func (this *Combat) Summarize(ret chan util.MapHelper) {
+	this.commandQueue <- cbt.Wrap(cbt.Summarize{Ret: ret})
+}
 func (this *Combat) AsSendable() util.MapHelper {
+	turn := 0
+	if this.state != nil {
+		turn = this.state.turn
+	}
 	return util.MapHelper{
-		"uuid":       this.uuid,
-		"minPlayers": this.minPlayers,
-		"maxPlayers": this.maxPlayers,
-		"players":    this.sendablePlayers(),
+		"uuid":        this.uuid,
+		"minPlayers":  this.minPlayers,
+		"maxPlayers":  this.maxPlayers,
+		"started":     this.state != nil,
+		"currentTurn": turn,
+		"players":     this.sendablePlayers(),
 	}
 }
 func (this *Combat) sendablePlayers() []util.MapHelper {
@@ -101,6 +110,10 @@ func (this *Combat) Run() {
 		select {
 		case cmd := <-this.commandQueue:
 			switch sub := cmd.Command.(type) {
+
+			// Get a summary about this combat.
+			case cbt.Summarize:
+				sub.Ret <- this.AsSendable()
 
 			// Register a new player.
 			case cbt.AddPlayer:
@@ -234,16 +247,16 @@ func (this *Combat) Run() {
 				unitId := (playerIndex + this.state.turn) % len(this.state.units)
 				unit := this.state.units[unitId]
 
-				for _, v := range piece.Content{
-					if unit.Content.CollidesWith(v){
+				for _, v := range piece.Content {
+					if unit.Content.CollidesWith(v) {
 						unit = nil
 						break
 					}
 				}
 				player.Notify(tx.Wrap(tx.Acknowledgment{Serial: "PlayTurn", Valid: unit != nil}))
-				if unit == nil{
+				if unit == nil {
 					log.Warning("Collision detected")
-					break;
+					break
 				}
 
 				playedPieces[sub.PieceIndex] = true

@@ -6,9 +6,10 @@ import (
 )
 
 type Combat interface {
-	UUID() string               // The UUID.
-	Notify(interface{})         // Send something to the combat.
-	AsSendable() util.MapHelper // Serialization.
-	WhileLocked(func())         // Lock then do something.
-	Run()                       // Start running the combat events loop.
+	UUID() string                  // The UUID.
+	Notify(interface{})            // Send something to the combat.
+	AsSendable() util.MapHelper    // Serialization.
+	WhileLocked(func())            // Lock then do something.
+	Run()                          // Start running the combat events loop.
+	Summarize(chan util.MapHelper) // Gets the summary of a combat.
 }

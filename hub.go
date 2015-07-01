@@ -4,6 +4,7 @@ import (
 	"gogs.pierreqr.fr/doodloo/communitrix/cmd/rx"
 	"gogs.pierreqr.fr/doodloo/communitrix/cmd/tx"
 	"gogs.pierreqr.fr/doodloo/communitrix/i"
+	"gogs.pierreqr.fr/doodloo/communitrix/util"
 	"net"
 	"reflect"
 	"time"
@@ -61,22 +62,25 @@ func (this *Hub) Run() {
 			// Player wants a list of existing combats.
 			case rx.CombatList:
 				time.Sleep(time.Millisecond * 500)
-				combats := make([]string, 0)
 				// TODO: Remove this from there!!!
-				for {
-					if len(this.combats) >= 2 {
-						break
-					}
+				for len(this.combats) < 2 {
 					log.Warning("This server only has %d combats, creating one more.", len(this.combats))
-					combat := NewCombat(2, 2)
+					combat := NewCombat(1, 1)
 					this.combats[combat.UUID()] = combat
 					go func(combat *Combat, ch chan<- *rx.Base) {
 						combat.Run()
 						ch <- rx.Wrap(nil, rx.CombatEnd{UUID: combat.uuid})
 					}(combat, this.commandQueue)
 				}
-				for uuid, _ := range this.combats {
-					combats = append(combats, uuid)
+				// Retrieve a list of combats.
+				combats := make([]util.MapHelper, 0)
+				comms := make(chan util.MapHelper)
+				for _, combat := range this.combats {
+					go combat.Summarize(comms)
+					summary := <-comms
+					if !summary["started"].(bool) {
+						combats = append(combats, summary)
+					}
 				}
 				player.Notify(tx.Wrap(tx.CombatList{Combats: combats}))
 

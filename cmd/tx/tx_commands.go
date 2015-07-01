@@ -1,7 +1,6 @@
 package tx
 
 import (
-	//"gogs.pierreqr.fr/doodloo/communitrix/logic"
 	"gogs.pierreqr.fr/doodloo/communitrix/util"
 	"reflect"
 )
@@ -31,7 +30,7 @@ type Registered struct {
 }
 
 type CombatList struct {
-	Combats []string `json:"combats"`
+	Combats []util.MapHelper `json:"combats"`
 }
 type CombatJoin struct {
 	Combat interface{} `json:"combat"` // The combat details.
