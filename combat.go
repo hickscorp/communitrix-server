@@ -294,7 +294,15 @@ func (this *Combat) Run() {
 								UnitID: (this.state.playerIndices[player.UUID()] + this.state.turn) % len(this.state.units),
 							}))
 					}
-
+					if this.state.turn > len(this.state.pieces) {
+						log.Warning("LAST TURN WAS JUST PLAYED.")
+						// Notify all other players.
+						endNotif := func(i.Player) *tx.Base {
+							return tx.Wrap(tx.CombatEnd{})
+						}
+						this.notifyPlayers(endNotif, false)
+						return
+					}
 				}
 			}
 		}

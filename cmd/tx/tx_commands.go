@@ -57,4 +57,5 @@ type CombatPlayerTurn struct {
 	UnitID     int         `json:"unitId"`
 	Unit       interface{} `json:"unit"`
 }
-type CombatEnd struct{}
+type CombatEnd struct {
+}
