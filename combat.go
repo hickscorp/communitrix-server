@@ -239,6 +239,18 @@ func (this *Combat) Run() {
 					}))
 					continue
 				}
+
+				log.Debug("Piece translation to euler angles = %v", sub.Rotation.ToEulerAngles())
+				if !this.VerifyRotation(sub.Rotation.ToEulerAngles()){
+					log.Warning("Wrong rotation detected.")
+					player.Notify(tx.Wrap(tx.Acknowledgment{
+						Serial: "PlayTurn",
+						Valid: false,
+						ErrorMessage: "An invalid rotation was detected. Please play again.",
+					}))
+					continue
+				}
+
 				piece := this.state.pieces[sub.PieceIndex].Clone().Rotate(sub.Rotation).Translate(sub.Translation)
 				log.Debug("Piece %d played with translation %v and rotation %v.", sub.PieceIndex, sub.Translation, sub.Rotation)
 
@@ -253,7 +265,11 @@ func (this *Combat) Run() {
 						break
 					}
 				}
-				player.Notify(tx.Wrap(tx.Acknowledgment{Serial: "PlayTurn", Valid: unit != nil}))
+				player.Notify(tx.Wrap(tx.Acknowledgment{
+					Serial: "PlayTurn",
+				  Valid: unit != nil,
+				  ErrorMessage: "A collison was detected. Please play again.",
+				}))
 				if unit == nil {
 					log.Warning("Collision detected")
 					break
@@ -344,4 +360,11 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 		Pieces: pieces,
 		Units:  units,
 	}, true
+}
+
+func (this *Combat) VerifyRotation(v *logic.Vector) (bool){
+	log.Warning(" Modulo X ==== ", v.X % 90)
+	log.Warning(" Modulo Y ==== ", v.Y % 90)
+	log.Warning(" Modulo Z ==== ", v.Z % 90)
+	return v.X % 90 == 0 && v.Y % 90 == 0 && v.Z % 90 == 0
 }

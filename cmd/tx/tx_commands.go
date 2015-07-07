@@ -19,8 +19,9 @@ type Error struct {
 	Reason string `json:"reason"`
 }
 type Acknowledgment struct {
-	Serial string `json:"serial"`
-	Valid  bool   `json:"valid"`
+	Serial 				string 	`json:"serial"`
+	Valid  				bool   	`json:"valid"`
+	ErrorMessage 	string	`json:"errorMessage"`
 }
 type Welcome struct {
 	Message string `json:"message"`
