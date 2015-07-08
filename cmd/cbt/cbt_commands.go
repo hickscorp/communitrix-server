@@ -17,7 +17,7 @@ type Summarize struct {
 type Prepare struct{}
 type Start struct {
 	Target *logic.Piece
-	Units  logic.Pieces
+	Units  logic.Units
 	Pieces logic.Pieces
 }
 

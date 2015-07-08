@@ -37,7 +37,7 @@ type Combat struct {
 type combatState struct {
 	turn          int                     // The current turn ID.
 	target        *logic.Piece            // The objective for all players.
-	units         logic.Pieces            // State of each player
+	units         logic.Units             // State of each unit.
 	pieces        logic.Pieces            // The pieces all players are given.
 	playedPieces  map[string]map[int]bool // Associative player name -> Piece ID -> Boolean.
 	playerIndices map[string]int          // Indices associated to each player.
@@ -274,13 +274,21 @@ func (this *Combat) Run() {
 					log.Warning("Collision detected")
 					break
 				}
-
+				// Register the piece as played for this player.
 				playedPieces[sub.PieceIndex] = true
-
+				// Merge the played piece into the current unit.
 				for _, c := range piece.Content {
 					unit.AddCell(c)
 				}
+				// Clean up the unit.
 				unit.CleanUp()
+				// Keep track of the played piece ID within this unit.
+				ids := unit.Moves[player.UUID()]
+				if ids == nil {
+					ids = make([]int, 0)
+				}
+				ids = append(ids, sub.PieceIndex)
+				unit.Moves[player.UUID()] = ids
 
 				playerMoveNotif := func(i.Player) *tx.Base {
 					return tx.Wrap(tx.CombatPlayerTurn{
@@ -343,14 +351,14 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 		log.Warning("Something went wrong during pieces generation.")
 		return nil, false
 	}
-	units, ok := make(logic.Pieces, playerCount), true
+	units, ok := make(logic.Units, playerCount), true
 	if !ok {
 		log.Warning("Something went wrong during units generation.")
 		return nil, false
 	}
 	// Temporary fix.
 	for i := 0; i < playerCount; i++ {
-		units[i] = logic.NewPiece(logic.NewVectorFromValues(0, 0, 0), 0)
+		units[i] = logic.NewEmptyUnit() //logic.NewPiece(logic.NewVectorFromValues(0, 0, 0), 0)
 	}
 
 	target.CleanUp()
