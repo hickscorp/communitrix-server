@@ -65,7 +65,7 @@ func (this *Hub) Run() {
 				// TODO: Remove this from there!!!
 				for len(this.combats) < 2 {
 					log.Warning("This server only has %d combats, creating one more.", len(this.combats))
-					combat := NewCombat(2, 2)
+					combat := NewCombat(1, 1)
 					this.combats[combat.UUID()] = combat
 					go func(combat *Combat, ch chan<- *rx.Base) {
 						combat.Run()

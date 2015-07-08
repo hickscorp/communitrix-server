@@ -93,6 +93,10 @@ func (this *Vector) Sub(t *Vector) *Vector {
 	return this
 }
 
+func (this *Vector) IsMultipleOf(angle int) bool {
+	return this.X%angle == 0 && this.Y%angle == 0 && this.Z%angle == 0
+}
+
 // Rotate applies a rotation transformation to the current object. The current object is then returned for chaining.
 func (this *Vector) Rotate(iq interface{}) *Vector {
 	q := iq.(*Quaternion)
