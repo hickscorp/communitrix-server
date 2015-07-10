@@ -268,7 +268,7 @@ func (this *Combat) Run() {
 				player.Notify(tx.Wrap(tx.Acknowledgment{
 					Serial:       "PlayTurn",
 					Valid:        unit != nil,
-					ErrorMessage: "A collison was detected. Please play again.",
+					ErrorMessage: "A collision was detected. Please play again.",
 				}))
 				if unit == nil {
 					log.Warning("Collision detected")
