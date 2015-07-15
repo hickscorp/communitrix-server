@@ -75,33 +75,23 @@ func (this *Player) AsSendable() util.MapHelper {
 	}
 }
 
-func (this *Player) WhileLocked(do func()) {
-	this.mutex.Lock()
-	do()
-	this.mutex.Unlock()
-}
 func (this *Player) IsInCombat() bool {
-	var ret bool
-	this.WhileLocked(func() {
-		ret = this.Combat != nil
-	})
-	return ret
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+	return this.Combat != nil
 }
 func (this *Player) JoinCombat(combat i.Combat) {
 	combat.Notify(cbt.Wrap(cbt.AddPlayer{Player: this}))
-	this.WhileLocked(func() {
-		this.combat = combat
-	})
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+	this.combat = combat
 }
-func (this *Player) LeaveCombat() bool {
-	var ret bool
-	this.WhileLocked(func() {
-		ret := this.combat != nil
-		if ret {
-			this.combat.Notify(cbt.Wrap(cbt.RemovePlayer{Player: this}))
-		}
-	})
-	return ret
+func (this *Player) LeaveCombat() {
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+	if this.combat != nil {
+		this.combat.Notify(cbt.Wrap(cbt.RemovePlayer{Player: this}))
+	}
 }
 
 // CommandFromPacket processes a JSON-formated payload and attempts to transform it into a hub command.
@@ -139,25 +129,19 @@ func (this *Player) CommandFromPacket(line []byte) *rx.Base {
 			})
 			break
 		}
-		this.WhileLocked(func() {
-			this.combat.Notify(cbt.Wrap(cbt.PlayTurn{
-				Player:      this,
-				PieceIndex:  rec.Int("pieceIndex"),
-				Rotation:    logic.NewQuaternionFromMap(rec.Map("rotation")),
-				Translation: logic.NewVectorFromMap(rec.Map("translation")),
-			}))
-		})
+		this.mutex.Lock()
+		defer this.mutex.Unlock()
+		this.combat.Notify(cbt.Wrap(cbt.PlayTurn{
+			Player:      this,
+			PieceIndex:  rec.Int("pieceIndex"),
+			Rotation:    logic.NewQuaternionFromMap(rec.Map("rotation")),
+			Translation: logic.NewVectorFromMap(rec.Map("translation")),
+		}))
 
 	// User wants to leave the combat.
 	case "CombatLeave":
-		if !this.LeaveCombat() {
-			log.Warning("Player %s requested to leave combat, but he is not in one.", this.uuid)
-			this.commandQueue <- tx.Wrap(tx.Error{
-				Code:   422,
-				Reason: "You cannot leave a combat while not participating one.",
-			})
-			break
-		}
+		this.LeaveCombat()
+		break
 
 	default:
 		log.Warning("Player %s sent an unhandled command type: %s.", this.uuid, rec)

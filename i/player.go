@@ -15,8 +15,6 @@ type Player interface {
 	Notify(*tx.Base)             // Send somthing to a player.
 	Combat() Combat              // Combat if any.
 	AsSendable() util.MapHelper  // Serialization.
-	WhileLocked(do func())       // Lock then do something.
-	IsInCombat() bool            // Query combat.
 	JoinCombat(combat Combat)    // Join a combat.
-	LeaveCombat() bool           // Leave a combat.
+	LeaveCombat()                // Leave a combat.
 }

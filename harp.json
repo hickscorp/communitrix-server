@@ -1,0 +1,20 @@
+{
+	"goos": "linux",
+	"goarch": "amd64",
+	"app": {
+		"name": "communitrix",
+		"importpath": "gogs.pierreqr.fr/doodloo/communitrix",
+		"envs": {},
+		"DefaultExcludeds": [ ".git/", "tmp/", ".DS_Store", "node_modules/", "_obj/", "_test/", "_vendor/", "data/" ],
+		"files": [ "gogs.pierreqr.fr/doodloo/communitrix" ]
+	},
+	"servers": {
+		"prod": [{
+			"gopath": "/home/users/hickscorp/harp/communitrix/gopath",
+			"user": "hickscorp",
+			"host": "www.PierreQR.fr",
+			"envs": {},
+			"port": ":22"
+		}]
+	}
+}

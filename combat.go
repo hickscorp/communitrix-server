@@ -26,7 +26,6 @@ func NextCombatUUID() int64 {
 // Player is the base struct representing connected entities.
 type Combat struct {
 	uuid                   string              // The combat unique identifier on the server.
-	mutex                  sync.Mutex          // The lock for this combat.
 	players                map[string]i.Player // Maintains a list of known players.
 	commandQueue           chan *cbt.Base      // The Combat command queue.
 	minPlayers, maxPlayers int                 // The minimum / maximum number of players that can join.
@@ -49,7 +48,6 @@ func (this *Combat) Notify(cmd interface{}) { this.commandQueue <- cmd.(*cbt.Bas
 func NewCombat(minPlayers, maxPlayers int) *Combat {
 	return &Combat{
 		uuid:         fmt.Sprintf("CBT%d", NextCombatUUID()),
-		mutex:        sync.Mutex{},
 		players:      make(map[string]i.Player),
 		commandQueue: make(chan *cbt.Base, *config.HubCommandBufferSize),
 		minPlayers:   minPlayers,
@@ -95,12 +93,6 @@ func (this *Combat) notifyPlayers(do func(i.Player) *tx.Base, perPlayerNotificat
 			player.Notify(notif)
 		}
 	}
-}
-
-func (this *Combat) WhileLocked(do func()) {
-	this.mutex.Lock()
-	do()
-	this.mutex.Unlock()
 }
 
 func (this *Combat) Run() {

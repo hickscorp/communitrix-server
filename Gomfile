@@ -1,5 +1,8 @@
 gom 'github.com/op/go-logging',             :commit => 'e8d5414f0947014548c2334044a0fac13187dfee'
 
+group :development do
+  gom 'github.com/bom-d-van/harp',          :commit => '9aecf2db78ff92dbd3b1cda0c4f1486c68ec47c2'
+end
 group :test do
-  gom 'github.com/stretchr/testify/assert', :commit => '4e2053a4afff974eda45ff92a9198f0273cdfdc7'
+  gom 'github.com/stretchr/testify/assert', :commit => '089c7181b8c728499929ff09b62d3fdd8df8adff'
 end
