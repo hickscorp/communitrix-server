@@ -143,6 +143,18 @@ func (this *Player) CommandFromPacket(line []byte) *rx.Base {
 		this.LeaveCombat()
 		break
 
+	// User wants to vote against another player.
+	case "CombatVote":
+		if !this.IsInCombat() {
+			log.Warning("Player %s is trying to vote, but he is not in a combat", this.uuid)
+			this.commandQueue <- tx.Wrap(tx.Error{
+				Code:   422,
+				Reason: "You cannot vote while not participating a combat.",
+			})
+			break
+		}
+		// TODO: Notify the combat about the vote.
+
 	default:
 		log.Warning("Player %s sent an unhandled command type: %s.", this.uuid, rec)
 		this.commandQueue <- tx.Wrap(tx.Error{

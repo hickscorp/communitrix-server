@@ -28,3 +28,7 @@ type PlayTurn struct {
 	Translation *logic.Vector
 	Rotation    *logic.Quaternion
 }
+type Vote struct {
+	Player   interface{}
+	PlayerID string
+}
