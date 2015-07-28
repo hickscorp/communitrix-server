@@ -19,6 +19,7 @@ _testmain.go
 *.swp
 .project
 .DS_Store
+_vendor
 _vendor/
 
 data/*
