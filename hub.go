@@ -29,7 +29,7 @@ func NewHub() *Hub {
 // This handler is used from the main program as it's websocket upgrader.
 func (this *Hub) HandleClient(conn net.Conn) {
 	log.Debug("New client connected, spawning routine.")
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Second * 1)
 	// Whenever this method exits, close the connection.
 	defer conn.Close()
 	// Store the player information for this connection.
@@ -62,6 +62,7 @@ func (this *Hub) Run() {
 
 			// Player wants a list of existing combats.
 			case rx.CombatList:
+				time.Sleep(time.Second * 1)
 				// TODO: Remove this from there!!!
 				for len(this.combats) < 2 {
 					log.Warning("This server only has %d combats, creating one more.", len(this.combats))
