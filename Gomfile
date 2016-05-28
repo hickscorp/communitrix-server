@@ -1,3 +1,5 @@
+gom 'github.com/hickscorp/communitrix-server'
+
 gom 'github.com/op/go-logging',             :commit => 'e8d5414f0947014548c2334044a0fac13187dfee'
 
 group :development do

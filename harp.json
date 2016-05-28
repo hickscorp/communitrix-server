@@ -3,10 +3,10 @@
 	"goarch": "amd64",
 	"app": {
 		"name": "communitrix",
-		"importpath": "gogs.pierreqr.fr/doodloo/communitrix",
+		"importpath": "github.com/hickscorp/communitrix-server",
 		"envs": {},
 		"DefaultExcludeds": [ ".git/", "tmp/", ".DS_Store", "node_modules/", "_obj/", "_test/", "_vendor/", "data/" ],
-		"files": [ "gogs.pierreqr.fr/doodloo/communitrix" ]
+		"files": [ "github.com/hickscorp/communitrix-server" ]
 	},
 	"servers": {
 		"prod": [{

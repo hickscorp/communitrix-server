@@ -1,8 +1,7 @@
 package i
 
 import (
-	//"gogs.pierreqr.fr/doodloo/communitrix/cmd/cbt"
-	"gogs.pierreqr.fr/doodloo/communitrix/util"
+	"github.com/hickscorp/communitrix-server/util"
 )
 
 type Combat interface {

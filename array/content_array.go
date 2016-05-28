@@ -1,7 +1,7 @@
 package array
 
 import (
-	"gogs.pierreqr.fr/doodloo/communitrix/logic"
+	"github.com/hickscorp/communitrix-server/logic"
 )
 
 type ContentArray struct {

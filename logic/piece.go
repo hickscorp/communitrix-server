@@ -2,7 +2,7 @@ package logic
 
 import (
 	"github.com/op/go-logging"
-	"gogs.pierreqr.fr/doodloo/communitrix/util"
+	"github.com/hickscorp/communitrix-server/util"
 	"math"
 )
 

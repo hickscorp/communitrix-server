@@ -1,8 +1,8 @@
 package i
 
 import (
-	"gogs.pierreqr.fr/doodloo/communitrix/cmd/tx"
-	"gogs.pierreqr.fr/doodloo/communitrix/util"
+	"github.com/hickscorp/communitrix-server/cmd/tx"
+	"github.com/hickscorp/communitrix-server/util"
 	"net"
 )
 

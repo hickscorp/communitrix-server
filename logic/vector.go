@@ -1,7 +1,7 @@
 package logic
 
 import (
-	"gogs.pierreqr.fr/doodloo/communitrix/util"
+	"github.com/hickscorp/communitrix-server/util"
 	"math"
 )
 

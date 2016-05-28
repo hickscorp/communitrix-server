@@ -1,8 +1,8 @@
 package gen
 
 import (
-	"gogs.pierreqr.fr/doodloo/communitrix/array"
-	"gogs.pierreqr.fr/doodloo/communitrix/logic"
+	"github.com/hickscorp/communitrix-server/array"
+	"github.com/hickscorp/communitrix-server/logic"
 	"math/rand"
 	"sync"
 )

@@ -1,6 +1,6 @@
 package array
 
-import "gogs.pierreqr.fr/doodloo/communitrix/logic"
+import "github.com/hickscorp/communitrix-server/logic"
 
 // Define our array filling template method.
 type ContentArrayFiller func(at *logic.Vector) int

@@ -1,10 +1,10 @@
 package main
 
 import (
-	"gogs.pierreqr.fr/doodloo/communitrix/cmd/rx"
-	"gogs.pierreqr.fr/doodloo/communitrix/cmd/tx"
-	"gogs.pierreqr.fr/doodloo/communitrix/i"
-	"gogs.pierreqr.fr/doodloo/communitrix/util"
+	"github.com/hickscorp/communitrix-server/cmd/rx"
+	"github.com/hickscorp/communitrix-server/cmd/tx"
+	"github.com/hickscorp/communitrix-server/i"
+	"github.com/hickscorp/communitrix-server/util"
 	"net"
 	"reflect"
 	"time"

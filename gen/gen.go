@@ -2,7 +2,7 @@ package gen
 
 import (
 	"github.com/op/go-logging"
-	"gogs.pierreqr.fr/doodloo/communitrix/logic"
+	"github.com/hickscorp/communitrix-server/logic"
 )
 
 var (

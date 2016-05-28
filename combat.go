@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"gogs.pierreqr.fr/doodloo/communitrix/cmd/cbt"
-	"gogs.pierreqr.fr/doodloo/communitrix/cmd/tx"
-	"gogs.pierreqr.fr/doodloo/communitrix/gen"
-	"gogs.pierreqr.fr/doodloo/communitrix/i"
-	"gogs.pierreqr.fr/doodloo/communitrix/logic"
-	"gogs.pierreqr.fr/doodloo/communitrix/util"
+	"github.com/hickscorp/communitrix-server/cmd/cbt"
+	"github.com/hickscorp/communitrix-server/cmd/tx"
+	"github.com/hickscorp/communitrix-server/gen"
+	"github.com/hickscorp/communitrix-server/i"
+	"github.com/hickscorp/communitrix-server/logic"
+	"github.com/hickscorp/communitrix-server/util"
 	"sync"
 )
 
@@ -331,14 +331,14 @@ func (this *Combat) Prepare() (*cbt.Start, bool) {
 	// Cache player count.
 	playerCount := len(this.players)
 	// Prepare data.
-	target, ok := gen.NewCellularAutomata(&logic.Vector{4, 3, 3}).Run(0.5)
+	target, ok := gen.NewCellularAutomata(&logic.Vector{4, 4, 4}).Run(0.5)
 	if !ok {
 		log.Warning("Something went wrong during target generation.")
 		return nil, false
 	}
 	log.Debug("  - Target: Cells %d, Size: %d", target.Size, len(target.Content))
 
-	pieces, ok := gen.NewPieceSplitter().Run(target, 6)
+	pieces, ok := gen.NewPieceSplitter().Run(target, 8)
 	if !ok {
 		log.Warning("Something went wrong during pieces generation.")
 		return nil, false

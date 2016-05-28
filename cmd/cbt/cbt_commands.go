@@ -1,7 +1,7 @@
 package cbt
 
-import "gogs.pierreqr.fr/doodloo/communitrix/logic"
-import "gogs.pierreqr.fr/doodloo/communitrix/util"
+import "github.com/hickscorp/communitrix-server/logic"
+import "github.com/hickscorp/communitrix-server/util"
 
 func Wrap(sub interface{}) *Base {
 	return &Base{Command: sub}
